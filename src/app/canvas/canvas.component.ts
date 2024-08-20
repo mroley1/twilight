@@ -14,16 +14,22 @@ export class CanvasComponent implements AfterViewInit {
   
   private offsetX = 0
   private offsetY = 0
+  private scale = 1
   
   private canvasWidth = 0
   private canvasHeight = 0
+  
+  private bgColor = "grey"
+  
+  private SCALE_FACTOR = 3
   
   @HostListener('window:resize')
   private setContextSize() {
     if (this.context) {
       const element = this.canvasReferenceSignal().nativeElement
-      element.width = this.canvasWidth = window.innerWidth
-      element.height = this.canvasHeight = window.innerHeight
+      element.width = this.canvasWidth = window.innerWidth * this.SCALE_FACTOR
+      element.height = this.canvasHeight = window.innerHeight * this.SCALE_FACTOR
+      this.draw()
     }
   }
   
@@ -35,27 +41,58 @@ export class CanvasComponent implements AfterViewInit {
     }
     this.context = canvasContext
     this.setContextSize()
-    this.draw()
   }
   
   private draw() {
     if (!this.context) {
       return
     }
-    this.context.clearRect(-this.offsetX, -this.offsetY, this.canvasWidth, this.canvasHeight)
-    this.context.beginPath();
-    this.context.moveTo(75, 50);
-    this.context.lineTo(100, 75);
-    this.context.lineTo(100, 25);
-    this.context.fill();
+    this.context.resetTransform()
+    this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+    this.context.setTransform(this.scale, 0, 0, this.scale, this.canvasWidth / 2, this.canvasHeight / 2);
+    
+    this.drawGrid()
+  }
+  
+  private drawGrid() {
+    if (!this.context) {
+      return
+    }
+    const TILE_SIZE = 300
+    const DOT_RADIUS = 10
+    const patternElement = document.createElement('canvas')
+    patternElement.width = TILE_SIZE;
+    patternElement.height = TILE_SIZE;
+    const patternContext = patternElement.getContext("2d")
+    if (!patternContext) {return}
+    patternContext.beginPath()
+    patternContext.ellipse(TILE_SIZE/2, TILE_SIZE/2, DOT_RADIUS, DOT_RADIUS, 0, 0, 2 * Math.PI)
+    patternContext.closePath()
+    patternContext.fillStyle = this.bgColor
+    patternContext.fill()
+    const pattern = this.context.createPattern(patternElement, null)
+    this.context.save()
+    this.context.fillStyle = pattern!
+    this.context.translate(this.offsetX % TILE_SIZE, this.offsetY % TILE_SIZE)
+    this.context.fillRect((-(this.canvasWidth * (1 / this.scale)) / 2) - TILE_SIZE, (-(this.canvasHeight * (1 / this.scale)) / 2) - TILE_SIZE, (this.canvasWidth * (1 / this.scale)) + (2 * TILE_SIZE), (this.canvasHeight * (1 / this.scale) + (2 * TILE_SIZE)))
+    this.context.restore()
   }
   
   public addOffest(x: number, y: number) {
-    this.offsetX += x;
-    this.offsetY += y;
     if (this.context) {
-      this.context.translate(x, y);
-      this.draw()
+      this.offsetX += (x / this.scale) * this.SCALE_FACTOR;
+      this.offsetY += (y / this.scale) * this.SCALE_FACTOR;
+      this.draw();
+    }
+  }
+  
+  public addScale(ammount: number) {
+    if (this.scale <= 0.2 && ammount <= 0) {
+      return
+    }
+    if (this.context) {
+      this.scale += ammount
+      this.draw();
     }
   }
 

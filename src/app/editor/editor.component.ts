@@ -35,6 +35,16 @@ export class EditorComponent implements AfterViewInit {
     slateElement.addEventListener("pointerup", pointerup)
     slateElement.addEventListener("pointercancel", pointerup)
     slateElement.addEventListener("pointerleave", pointerup)
+    function wheel(event: WheelEvent) {
+      canvasComponent.addScale(event.deltaY / window.innerHeight)
+    }
+    function touchMove(event: TouchEvent) {
+      if (event.touches.length === 2) {
+        console.log("pinch")
+      }
+    }
+    slateElement.addEventListener("wheel", wheel)
+    slateElement.addEventListener("touchmove", touchMove)
   }
   
 }
