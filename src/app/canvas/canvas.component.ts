@@ -159,14 +159,31 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   public addScale(ammount: number) {
-    if (this.scale <= 0.05 && ammount <= 0) {
+    this.scale += ammount
+    if (this.scale < 0.05) {
       this.scale = 0.05
-      return
     }
-    if (this.context) {
-      this.scale += ammount
-      this.draw();
+    this.draw()
+  }
+  
+  public getNearestPointX(clientX: number): number {
+    const canvasCoordinate = (clientX - this.canvasWidth / 2) / this.scale - this.offsetX
+    return Math.round(canvasCoordinate / this.halfTileSize)
+  }
+  
+  public getNearestPointY(clientY: number): number {
+    const canvasCoordinate = (clientY - this.canvasHeight / 2) / this.scale - this.offsetY
+    return Math.round(canvasCoordinate / this.halfTileSize)
+  }
+  
+  public markupPoint(x: number, y: number) {
+    this.markupState = {
+      points: [{x, y}],
+      rects: [],
+      polygons: [],
+      lines: []
     }
+    this.draw()
   }
 
 }

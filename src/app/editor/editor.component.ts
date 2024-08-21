@@ -26,25 +26,32 @@ export class EditorComponent implements AfterViewInit {
       slateElement.addEventListener("pointermove", pointermove)
     }
     function pointermove(event: PointerEvent) {
+      event.preventDefault()
       canvasComponent.addOffest(event.movementX, event.movementY)
     }
     function pointerup() {
       slateElement.removeEventListener("pointermove", pointermove)
     }
-    slateElement.addEventListener("pointerdown",pointerdown)
+    slateElement.addEventListener("pointerdown", pointerdown)
     slateElement.addEventListener("pointerup", pointerup)
     slateElement.addEventListener("pointercancel", pointerup)
     slateElement.addEventListener("pointerleave", pointerup)
     function wheel(event: WheelEvent) {
-      canvasComponent.addScale(event.deltaY / window.innerHeight)
+      canvasComponent.addScale(event.deltaY / (window.innerHeight * 4))
     }
     function touchMove(event: TouchEvent) {
+      event.preventDefault()
       if (event.touches.length === 2) {
         console.log("pinch")
       }
     }
     slateElement.addEventListener("wheel", wheel)
     slateElement.addEventListener("touchmove", touchMove)
+    
+    slateElement.addEventListener("pointermove", (event) => {
+      event.preventDefault()
+      canvasComponent.markupPoint(canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+    })
   }
   
 }
