@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, Input, Signal, viewChild } from '@angular/core';
 import { CanvasComponent } from "../canvas/canvas.component";
+import { EditorState } from './editorState';
 
 @Component({
   selector: 'app-editor',
@@ -9,10 +10,13 @@ import { CanvasComponent } from "../canvas/canvas.component";
   styleUrl: './editor.component.scss'
 })
 export class EditorComponent implements AfterViewInit {
+  EditorState = EditorState
   
   canvasComponentSignal: Signal<CanvasComponent> = viewChild.required('canvas')
   slateReferenceSignal: Signal<ElementRef<HTMLDivElement>> = viewChild.required('slate')
   mapId:number|undefined
+  
+  editorState: EditorState = EditorState.MOVE
   
   @Input()
   set id(id: number) {
@@ -39,19 +43,16 @@ export class EditorComponent implements AfterViewInit {
     function wheel(event: WheelEvent) {
       canvasComponent.addScale(event.deltaY / (window.innerHeight * 4))
     }
-    function touchMove(event: TouchEvent) {
-      event.preventDefault()
-      if (event.touches.length === 2) {
-        console.log("pinch")
-      }
-    }
     slateElement.addEventListener("wheel", wheel)
-    slateElement.addEventListener("touchmove", touchMove)
     
     slateElement.addEventListener("pointermove", (event) => {
       event.preventDefault()
       canvasComponent.markupPoint(canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
     })
+  }
+  
+  public setState(state: EditorState) {
+    this.editorState = state;
   }
   
 }

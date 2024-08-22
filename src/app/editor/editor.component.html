@@ -1,7 +1,9 @@
 <app-canvas #canvas></app-canvas>
-<div #slate class="slate"></div>
+<div #slate class="slate {{EditorState[editorState]}}"></div>
 <div #toolbar class="toolbar">
-    <li>move</li>
-    <li>rect</li>
-    <li>polygon</li>
+    <button (click)="setState(EditorState.MOVE)">move</button>
+    <button (click)="setState(EditorState.RECT)">rect</button>
+    <button (click)="setState(EditorState.POLYGON)">polygon</button>
+    <button (click)="setState(EditorState.WALL)">wall</button>
 </div>
+{{EditorState[editorState]}}

@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, HostListener, Signal, viewChild } from '@angular/core';
+import paperFull from 'paper';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -22,9 +23,13 @@ export class CanvasComponent implements AfterViewInit {
   private markupState: MarkupState = {
     points: [{x: -2, y: -2}, {x: -1, y: -1}, {x: 0, y: 0}],
     rects: [{startX: 1, startY: 1, endX: 2, endY: 2}],
-    polygons: [[{x: -3, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
+    polygons: [[{x: -4, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
     lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
   }
+  
+  private dungeonState: string[] = [
+    "M2 2h1v1h-1v-1z"
+  ]
   
   private offsetX = 0
   private offsetY = 0
@@ -79,7 +84,7 @@ export class CanvasComponent implements AfterViewInit {
     this.context.setTransform(this.scale, 0, 0, this.scale, this.canvasWidth / 2, this.canvasHeight / 2);
     
     this.drawGrid()
-    
+    this.drawDungeon()
     this.drawMarkup()
   }
   
@@ -110,7 +115,23 @@ export class CanvasComponent implements AfterViewInit {
     }
   }
   
-  drawMarkup() {
+  private drawDungeon() {
+    if (!this.context) {
+      return
+    }
+    this.context.save()
+    this.context.setTransform(this.scale * this.halfTileSize, 0, 0, this.scale * this.halfTileSize, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
+    this.context.lineWidth = 20 / this.halfTileSize
+    this.context.fillStyle = "antiquewhite"
+    this.dungeonState.forEach((d) => {
+      const path = new Path2D(d)
+      this.context?.fill(path)
+      this.context?.stroke(path)
+    })
+    this.context.restore()
+  }
+  
+  private drawMarkup() {
     if (!this.context) {
       return
     }
