@@ -1,5 +1,6 @@
-import { AfterViewInit, Component, ElementRef, HostListener, Signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
 import paperFull from 'paper';
+import { PointerType } from './pointerType';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -16,8 +17,14 @@ interface MarkupState {
   styleUrl: './canvas.component.scss'
 })
 export class CanvasComponent implements AfterViewInit {
+  PointerType = PointerType
+  
+  @Output() events = new EventEmitter<PointerEvent>()
+  
+  @Input('pointerType') pointerType!: PointerType
   
   canvasReferenceSignal: Signal<ElementRef<HTMLCanvasElement>> = viewChild.required('canvas')
+  slateReferenceSignal: Signal<ElementRef<HTMLDivElement>> = viewChild.required('slate')
   context: CanvasRenderingContext2D|undefined
   
   private markupState: MarkupState = {
@@ -63,6 +70,27 @@ export class CanvasComponent implements AfterViewInit {
     }
     this.context = canvasContext
     this.setContextSize()
+    this.initListeners()
+  }
+  
+  private initListeners() {
+    const dispatchEvent = (event: PointerEvent) => {
+      this.events.emit(event)
+    }
+    const slate = this.slateReferenceSignal().nativeElement
+    slate.addEventListener("pointermove", dispatchEvent)
+    slate.addEventListener("pointerdown", dispatchEvent)
+    slate.addEventListener("pointerup", dispatchEvent)
+    slate.addEventListener("pointercancel", dispatchEvent)
+    slate.addEventListener("pointerleave", dispatchEvent)
+    const wheel = (event: WheelEvent) => {
+        this.addScale(event.deltaY / (window.innerHeight * -4))
+      }
+    slate.addEventListener("wheel", wheel)
+  }
+  
+  setPointerType(pointerType: PointerType) {
+    this.pointerType = pointerType
   }
   
   // translate coordinates from realtive to canvas units on x plane

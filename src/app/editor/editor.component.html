@@ -1,9 +1,7 @@
-<app-canvas #canvas></app-canvas>
-<div #slate class="slate {{EditorState[editorState]}}"></div>
+<app-canvas #canvas [pointerType]="this.editorState.pointerType" (events)="receiveEvent($event)"></app-canvas>
 <div #toolbar class="toolbar">
-    <button (click)="setState(EditorState.MOVE)">move</button>
-    <button (click)="setState(EditorState.RECT)">rect</button>
-    <button (click)="setState(EditorState.POLYGON)">polygon</button>
-    <button (click)="setState(EditorState.WALL)">wall</button>
+    <button (click)="setEditorState(move)">move</button>
+    <button (click)="setEditorState(rect)">rect</button>
+    <button (click)="setEditorState(polygon)">polygon</button>
+    <button (click)="setEditorState(wall)">wall</button>
 </div>
-{{EditorState[editorState]}}
