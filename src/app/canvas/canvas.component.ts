@@ -93,14 +93,24 @@ export class CanvasComponent implements AfterViewInit {
     this.pointerType = pointerType
   }
   
-  // translate coordinates from realtive to canvas units on x plane
+  // translate coordinates from block to canvas units on x plane
   private tcX(coordinate: number) {
     return (coordinate * this.halfTileSize) + this.offsetX
   }
   
-  // translate coordinates from realtive to canvas units on y plane
+  // translate coordinates from block to canvas units on y plane
   private tcY(coordinate: number) {
     return (coordinate * this.halfTileSize) + this.offsetY
+  }
+  
+  // translate coordinates from client to block units on x plane
+  private tcbX(clientX: number) {
+    return ((clientX - this.canvasWidth / 2) / this.scale - this.offsetX) / this.halfTileSize
+  }
+  
+  // translate coordinates from client to block units on y plane
+  private tcbY(clientY: number) {
+    return ((clientY - this.canvasHeight / 2) / this.scale - this.offsetY) / this.halfTileSize
   }
   
   private draw() {
@@ -225,6 +235,16 @@ export class CanvasComponent implements AfterViewInit {
     return Math.round(canvasCoordinate / this.halfTileSize)
   }
   
+  public clearMarkup() {
+    this.markupState = {
+      points: [],
+      rects: [],
+      polygons: [],
+      lines: []
+    }
+    this.draw()
+  }
+  
   public markupPoint(x: number, y: number) {
     this.markupState = {
       points: [{x, y}],
@@ -233,6 +253,23 @@ export class CanvasComponent implements AfterViewInit {
       lines: []
     }
     this.draw()
+  }
+  
+  markupRectFromPoints(startX: number, startY: number, endX: number, endY: number) {
+    const rect = {
+      startX: Math.floor(this.tcbX(Math.min(startX, endX))),
+      startY: Math.floor(this.tcbY(Math.min(startY, endY))),
+      endX: Math.ceil(this.tcbX(Math.max(startX, endX))),
+      endY: Math.ceil(this.tcbY(Math.max(startY, endY))),
+    }
+    this.markupState = {
+      points: [],
+      rects: [rect],
+      polygons: [],
+      lines: []
+    }
+    this.draw()
+    return rect
   }
 
 }
