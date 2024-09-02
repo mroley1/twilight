@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
-import paperFull from 'paper';
+import paper from 'paper';
 import { PointerType } from './pointerType';
 
 interface MarkupState {
@@ -34,9 +34,7 @@ export class CanvasComponent implements AfterViewInit {
     lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
   }
   
-  private dungeonState: string[] = [
-    "M2 2h1v1h-1v-1z"
-  ]
+  private dungeonState: string[] = []
   
   private offsetX = 0
   private offsetY = 0
@@ -163,7 +161,7 @@ export class CanvasComponent implements AfterViewInit {
     this.context.fillStyle = "antiquewhite"
     this.dungeonState.forEach((d) => {
       const path = new Path2D(d)
-      this.context?.fill(path)
+      this.context?.fill(path, "evenodd")
       this.context?.stroke(path)
     })
     this.context.restore()
@@ -233,6 +231,25 @@ export class CanvasComponent implements AfterViewInit {
   public getNearestPointY(clientY: number): number {
     const canvasCoordinate = (clientY - this.canvasHeight / 2) / this.scale - this.offsetY
     return Math.round(canvasCoordinate / this.halfTileSize)
+  }
+  
+  addPathToDungeon(path: string) {
+    paper.setup(document.createElement("canvas"))
+    let paths: paper.PathItem[] = this.dungeonState.map((d: string) => new paper.Path(d))
+    let conglomerate: paper.PathItem = new paper.Path(path)
+    paths = paths.filter((path) => {
+      console.log(path.intersect(conglomerate).pathData)
+      if (!path.intersect(conglomerate).isEmpty()) {
+        console.log("join")
+        conglomerate = conglomerate.unite(path)
+        return false
+      }
+      return true
+    })
+    paths.push(conglomerate)
+    this.dungeonState = paths.map((path) => path.pathData)
+    paper.project.activeLayer.removeChildren()
+    console.log(this.dungeonState)
   }
   
   public clearMarkup() {

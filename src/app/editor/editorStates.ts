@@ -40,21 +40,33 @@ export class Rect implements EditorState {
     drawing = false
     start: number|undefined
     startingPoint = {x: 0, y: 0}
+    finalRect: {startX: number, startY: number, endX: number, endY: number}|undefined
     handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
                 this.startingPoint = {x: event.clientX, y: event.clientY}
+                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
                 this.drawing = true
             break;
             case "pointermove":
                 if (this.drawing) {
-                    canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
+                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
                 } else {
                     canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY)
                 }
             break;
             case "pointerup":
                 this.drawing = false
+                if (this.finalRect) {
+                    const path = `M ${this.finalRect.startX} ${this.finalRect.startY}
+                                  H ${this.finalRect.endX}
+                                  V ${this.finalRect.endY}
+                                  H ${this.finalRect.startX}
+                                  V ${this.finalRect.startY}
+                                  Z`
+                    canvasComponent.addPathToDungeon(path)
+                    this.finalRect = undefined
+                }
                 canvasComponent.clearMarkup()
             break;
             case "pointercancel":
