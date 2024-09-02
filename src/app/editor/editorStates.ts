@@ -40,19 +40,21 @@ export class Rect implements EditorState {
     drawing = false
     start: number|undefined
     startingPoint = {x: 0, y: 0}
+    deleting = false
     finalRect: {startX: number, startY: number, endX: number, endY: number}|undefined
     handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
+                this.deleting = event.button == 2;
                 this.startingPoint = {x: event.clientX, y: event.clientY}
-                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
+                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY, this.deleting)
                 this.drawing = true
             break;
             case "pointermove":
                 if (this.drawing) {
-                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
+                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY, this.deleting)
                 } else {
-                    canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY)
+                    canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY, this.deleting)
                 }
             break;
             case "pointerup":
@@ -64,7 +66,12 @@ export class Rect implements EditorState {
                                   H ${this.finalRect.startX}
                                   V ${this.finalRect.startY}
                                   Z`
-                    canvasComponent.addPathToDungeon(path)
+                    if (this.deleting) {
+                        canvasComponent.removePathFromDungeon(path)
+                    } else {
+                        canvasComponent.addPathToDungeon(path)
+                    }
+                    this.deleting = false
                     this.finalRect = undefined
                 }
                 canvasComponent.clearMarkup()

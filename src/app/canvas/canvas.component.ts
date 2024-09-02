@@ -33,8 +33,10 @@ export class CanvasComponent implements AfterViewInit {
     polygons: [[{x: -4, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
     lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
   }
+  private markupFill = "#000"
+  private markupStroke = "#000"
   
-  private dungeonState: string[] = []
+  private dungeonPath: paper.PathItem|undefined = undefined
   
   private offsetX = 0
   private offsetY = 0
@@ -47,8 +49,10 @@ export class CanvasComponent implements AfterViewInit {
   private halfTileSize = this.TILE_SIZE / 2
   
   private BG_COLOR = "grey"
-  private MARKUP_FILL = "#2288"
-  private MARKUP_STROKE = "#33F"
+  private MARKUP_ADD_FILL = "#2288"
+  private MARKUP_DEL_FILL = "#8228"
+  private MARKUP_ADD_STROKE = "#33F"
+  private MARKUP_DEL_STROKE = "#F33"
   
   @HostListener('window:resize')
   private setContextSize() {
@@ -58,6 +62,10 @@ export class CanvasComponent implements AfterViewInit {
       element.height = this.canvasHeight = window.innerHeight
       this.draw()
     }
+  }
+  
+  constructor() {
+    paper.setup(document.createElement("canvas"))
   }
   
   ngAfterViewInit(): void {
@@ -85,6 +93,9 @@ export class CanvasComponent implements AfterViewInit {
         this.addScale(event.deltaY / (window.innerHeight * -4))
       }
     slate.addEventListener("wheel", wheel)
+    slate.addEventListener("contextmenu", (e) => {
+      e.preventDefault()
+    })
   }
   
   setPointerType(pointerType: PointerType) {
@@ -159,11 +170,13 @@ export class CanvasComponent implements AfterViewInit {
     this.context.setTransform(this.scale * this.halfTileSize, 0, 0, this.scale * this.halfTileSize, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
     this.context.lineWidth = 20 / this.halfTileSize
     this.context.fillStyle = "antiquewhite"
-    this.dungeonState.forEach((d) => {
-      const path = new Path2D(d)
+    
+    if (this.dungeonPath) {
+      const path = new Path2D(this.dungeonPath.pathData)
       this.context?.fill(path, "evenodd")
       this.context?.stroke(path)
-    })
+    }
+    
     this.context.restore()
   }
   
@@ -172,9 +185,9 @@ export class CanvasComponent implements AfterViewInit {
       return
     }
     this.context.save()
-    this.context.fillStyle = this.MARKUP_FILL
+    this.context.fillStyle = this.markupFill
     this.context.lineWidth = 10;
-    this.context.strokeStyle = this.MARKUP_STROKE
+    this.context.strokeStyle = this.markupStroke
     this.markupState.points.forEach((point) => {
       this.context?.beginPath()
       this.context?.ellipse(this.tcX(point.x), this.tcY(point.y), 20, 20, 0, 0, Math.PI * 2)
@@ -234,22 +247,21 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   addPathToDungeon(path: string) {
-    paper.setup(document.createElement("canvas"))
-    let paths: paper.PathItem[] = this.dungeonState.map((d: string) => new paper.Path(d))
-    let conglomerate: paper.PathItem = new paper.Path(path)
-    paths = paths.filter((path) => {
-      console.log(path.intersect(conglomerate).pathData)
-      if (!path.intersect(conglomerate).isEmpty()) {
-        console.log("join")
-        conglomerate = conglomerate.unite(path)
-        return false
-      }
-      return true
-    })
-    paths.push(conglomerate)
-    this.dungeonState = paths.map((path) => path.pathData)
-    paper.project.activeLayer.removeChildren()
-    console.log(this.dungeonState)
+    const newPath = new paper.Path(path)
+    if (this.dungeonPath) {
+      this.dungeonPath = this.dungeonPath.unite(newPath, [false])
+    } else {
+      this.dungeonPath = newPath
+    }
+  }
+  
+  removePathFromDungeon(path: string) {
+    const newPath = new paper.Path(path)
+    if (this.dungeonPath) {
+      this.dungeonPath = this.dungeonPath.subtract(newPath, [false])
+    } else {
+      this.dungeonPath = newPath
+    }
   }
   
   public clearMarkup() {
@@ -272,13 +284,15 @@ export class CanvasComponent implements AfterViewInit {
     this.draw()
   }
   
-  markupRectFromPoints(startX: number, startY: number, endX: number, endY: number) {
+  markupRectFromPoints(startX: number, startY: number, endX: number, endY: number, deleting: boolean) {
     const rect = {
       startX: Math.floor(this.tcbX(Math.min(startX, endX))),
       startY: Math.floor(this.tcbY(Math.min(startY, endY))),
       endX: Math.ceil(this.tcbX(Math.max(startX, endX))),
       endY: Math.ceil(this.tcbY(Math.max(startY, endY))),
     }
+    this.markupFill = deleting ? this.MARKUP_DEL_FILL : this.MARKUP_ADD_FILL
+    this.markupStroke = deleting ? this.MARKUP_DEL_STROKE : this.MARKUP_ADD_STROKE
     this.markupState = {
       points: [],
       rects: [rect],
