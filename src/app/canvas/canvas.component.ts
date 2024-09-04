@@ -249,7 +249,7 @@ export class CanvasComponent implements AfterViewInit {
   addPathToDungeon(path: string) {
     const newPath = new paper.Path(path)
     if (this.dungeonPath) {
-      this.dungeonPath = this.dungeonPath.unite(newPath, [false])
+      this.dungeonPath = new paper.Path(this.dungeonPath.pathData + "Z," + path)
     } else {
       this.dungeonPath = newPath
     }
@@ -264,6 +264,18 @@ export class CanvasComponent implements AfterViewInit {
     }
   }
   
+  addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
+    console.log(startX + " " + startY + " " + endX + " " + endY)
+    const subPath = new paper.Path(`M ${startX} ${startY}
+                                    L ${endX} ${endY}`)
+    if (this.dungeonPath) {
+      // this.dungeonPath = this.dungeonPath.divide(subPath, {insert: false, trace: false})
+      console.log(this.dungeonPath.pathData)
+    }
+    this.dungeonPath = new paper.Path("M0,0L3,0L3,2L1,2L3,2L3,4L0,4Z")
+    this.draw()
+  }
+  
   public clearMarkup() {
     this.markupState = {
       points: [],
@@ -274,6 +286,7 @@ export class CanvasComponent implements AfterViewInit {
     this.draw()
   }
   
+  // based on grid coordinates
   public markupPoint(x: number, y: number) {
     this.markupState = {
       points: [{x, y}],
@@ -284,6 +297,18 @@ export class CanvasComponent implements AfterViewInit {
     this.draw()
   }
   
+  // based on grid coordinates
+  public markupLine(startX: number, startY: number, endX: number, endY: number) {
+    this.markupState = {
+      points: [],
+      rects: [],
+      polygons: [],
+      lines: [{startX, startY, endX, endY}]
+    }
+    this.draw()
+  }
+  
+  // based on client coordinates
   markupRectFromPoints(startX: number, startY: number, endX: number, endY: number, deleting: boolean) {
     const rect = {
       startX: Math.floor(this.tcbX(Math.min(startX, endX))),

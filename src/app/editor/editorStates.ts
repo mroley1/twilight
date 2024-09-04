@@ -97,5 +97,26 @@ export class Polygon implements EditorState {
 export class Wall implements EditorState {
     name = "WALL"
     pointerType = PointerType.DEFAULT;
-    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {};
+    drawing = false;
+    startingPoint = {x: 0, y: 0};
+    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
+        switch (event.type) {
+            case "pointerdown":
+                this.startingPoint = {x: canvasComponent.getNearestPointX(event.clientX), y: canvasComponent.getNearestPointY(event.clientY)}
+                this.drawing = true;
+            break;
+            case "pointermove":
+                if (this.drawing) {
+                    canvasComponent.markupLine(this.startingPoint.x, this.startingPoint.y, canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                }
+                else {
+                    canvasComponent.markupPoint(canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                }
+            break;
+            case "pointerup":
+                canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                this.drawing = false;
+            break;
+        }
+    };
 }
