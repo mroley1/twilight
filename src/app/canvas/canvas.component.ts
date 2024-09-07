@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
 import paper from 'paper';
 import { PointerType } from './pointerType';
+import { PathMaster } from './pathMaster';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -36,9 +37,7 @@ export class CanvasComponent implements AfterViewInit {
   private markupFill = "#000"
   private markupStroke = "#000"
   
-  private dungeonInteriorPath: paper.PathItem|undefined
-  private dungeonWalls: paper.Path[] = []
-  // ^ may need to be managed canvas to use hit test. can use hit test without fill to detect fully internal segments
+  private dungeonPath: PathMaster = new PathMaster()
   
   private offsetX = 0
   private offsetY = 0
@@ -173,16 +172,9 @@ export class CanvasComponent implements AfterViewInit {
     this.context.lineWidth = 20 / this.halfTileSize
     this.context.fillStyle = "antiquewhite"
     
-    if (this.dungeonInteriorPath) {
-      const path = new Path2D(this.dungeonInteriorPath.pathData)
-      this.context?.fill(path)
-    }
-    
-    this.dungeonWalls.forEach((wall) => {
-      const path = new Path2D(wall.pathData)
-      this.context!.strokeStyle = "#" + (Math.round(Math.random() * 16581375)).toString(16)
-      this.context?.stroke(path)
-    })
+    const path = new Path2D(this.dungeonPath.getPath())
+    this.context.fill(path, "evenodd")
+    this.context.stroke(path)
     
     this.context.restore()
   }
@@ -254,34 +246,36 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   addPathToDungeon(path: string) {
-    const newPath = new paper.Path(path)
-    let segments = newPath.segments.map((leadingSegment) => {
-      return new paper.Path([leadingSegment, leadingSegment.next])
-    })
-    this.dungeonWalls.push(...segments)
-    if (this.dungeonInteriorPath) {
-      let dungeonWallParts: paper.Path[] = []
-      this.dungeonWalls.forEach((wall) => {
-        let wallParts: paper.Path[] = []
-        const combinedCrossings: paper.CurveLocation[] = []
-        combinedCrossings.push(...wall.getCrossings(this.dungeonInteriorPath!))
-        combinedCrossings.push(...wall.getCrossings(newPath))
-        combinedCrossings.forEach((curveLocation) => {
-          const segment = wall.divideAt(curveLocation)
-          if (segment) {
-            wallParts.push(new paper.Path([segment.previous, segment]))
-          }
-        })
-        wallParts.push(new paper.Path([wall.segments[wall.segments.length - 2], wall.segments[wall.segments.length - 1]]))
-        dungeonWallParts.push(...wallParts)
-      })
-      this.dungeonWalls = dungeonWallParts
-    }
-    if (this.dungeonInteriorPath) {
-      this.dungeonInteriorPath = this.dungeonInteriorPath.unite(newPath, [false])
-    } else {
-      this.dungeonInteriorPath = newPath
-    }
+    this.dungeonPath.add(path)
+    this.draw()
+    // const newPath = new paper.Path(path)
+    // let segments = newPath.segments.map((leadingSegment) => {
+    //   return new paper.Path([leadingSegment, leadingSegment.next])
+    // })
+    // this.dungeonWalls.push(...segments)
+    // if (this.dungeonInteriorPath) {
+    //   let dungeonWallParts: paper.Path[] = []
+    //   this.dungeonWalls.forEach((wall) => {
+    //     let wallParts: paper.Path[] = []
+    //     const combinedCrossings: paper.CurveLocation[] = []
+    //     combinedCrossings.push(...wall.getCrossings(this.dungeonInteriorPath!))
+    //     combinedCrossings.push(...wall.getCrossings(newPath))
+    //     combinedCrossings.forEach((curveLocation) => {
+    //       const segment = wall.divideAt(curveLocation)
+    //       if (segment) {
+    //         wallParts.push(new paper.Path([segment.previous, segment]))
+    //       }
+    //     })
+    //     wallParts.push(new paper.Path([wall.segments[wall.segments.length - 2], wall.segments[wall.segments.length - 1]]))
+    //     dungeonWallParts.push(...wallParts)
+    //   })
+    //   this.dungeonWalls = dungeonWallParts
+    // }
+    // if (this.dungeonInteriorPath) {
+    //   this.dungeonInteriorPath = this.dungeonInteriorPath.unite(newPath, [false])
+    // } else {
+    //   this.dungeonInteriorPath = newPath
+    // }
     
     // this.dungeonWalls = this.dungeonWalls.filter((wall) => {
     //   //console.log(wall.getNearestPoint(wall.position))
@@ -322,12 +316,14 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   removePathFromDungeon(path: string) {
-    const newPath = new paper.Path(path)
-    if (this.dungeonInteriorPath) {
-      this.dungeonInteriorPath = this.dungeonInteriorPath.subtract(newPath, [false])
-    } else {
-      this.dungeonInteriorPath = newPath
-    }
+    this.dungeonPath.sub(path)
+    this.draw()
+    // const newPath = new paper.Path(path)
+    // if (this.dungeonInteriorPath) {
+    //   this.dungeonInteriorPath = this.dungeonInteriorPath.subtract(newPath, [false])
+    // } else {
+    //   this.dungeonInteriorPath = newPath
+    // }
   }
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {

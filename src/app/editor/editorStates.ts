@@ -60,12 +60,12 @@ export class Rect implements EditorState {
             case "pointerup":
                 this.drawing = false
                 if (this.finalRect) {
-                    const path = `M ${this.finalRect.startX} ${this.finalRect.startY}
+                    const path = `M ${this.finalRect.startX}, ${this.finalRect.startY}
                                   H ${this.finalRect.endX}
                                   V ${this.finalRect.endY}
                                   H ${this.finalRect.startX}
                                   V ${this.finalRect.startY}
-                                  Z`
+                                  Z`.replaceAll(" ", "")
                     if (this.deleting) {
                         canvasComponent.removePathFromDungeon(path)
                     } else {
