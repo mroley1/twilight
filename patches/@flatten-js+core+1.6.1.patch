@@ -1,0 +1,25 @@
+diff --git a/node_modules/@flatten-js/core/index.d.ts b/node_modules/@flatten-js/core/index.d.ts
+index 901d14a..9c94df0 100644
+--- a/node_modules/@flatten-js/core/index.d.ts
++++ b/node_modules/@flatten-js/core/index.d.ts
+@@ -552,6 +552,7 @@ declare namespace Flatten {
+         translate(vec: Vector): Polygon;
+         toJSON() : Object;
+         toArray() : Polygon[];
++        dpath() : string;
+         svg(attrs?: SVGAttributes): string;
+     }
+ 
+diff --git a/node_modules/@flatten-js/core/src/classes/polygon.js b/node_modules/@flatten-js/core/src/classes/polygon.js
+index ab37ba1..d302d1b 100644
+--- a/node_modules/@flatten-js/core/src/classes/polygon.js
++++ b/node_modules/@flatten-js/core/src/classes/polygon.js
+@@ -633,7 +633,7 @@ export class Polygon {
+ 
+     /**
+      * Return string to be assigned to 'd' attribute of <path> element
+-     * @returns {*}
++     * @returns {string}
+      */
+     dpath() {
+         return [...this.faces].reduce((acc, face) => acc + face.svg(), "")

@@ -1,3 +1,4 @@
+import Flatten from "@flatten-js/core";
 import { CanvasComponent } from "../canvas/canvas.component";
 import { PointerType } from "../canvas/pointerType";
 
@@ -66,10 +67,13 @@ export class Rect implements EditorState {
                                   H ${this.finalRect.startX}
                                   V ${this.finalRect.startY}
                                   Z`.replaceAll(" ", "")
+                    const polygon = new Flatten.Polygon(
+                        new Flatten.Box(this.finalRect.startX, this.finalRect.startY, this.finalRect.endX, this.finalRect.endY)
+                    )
                     if (this.deleting) {
-                        canvasComponent.removePathFromDungeon(path)
+                        canvasComponent.removePathFromDungeon(polygon)
                     } else {
-                        canvasComponent.addPathToDungeon(path)
+                        canvasComponent.addPathToDungeon(polygon)
                     }
                     this.deleting = false
                     this.finalRect = undefined

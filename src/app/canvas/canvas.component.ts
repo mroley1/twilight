@@ -1,7 +1,6 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
-import paper from 'paper';
+import Flatten from '@flatten-js/core';
 import { PointerType } from './pointerType';
-import { PathMaster } from './pathMaster';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -37,7 +36,7 @@ export class CanvasComponent implements AfterViewInit {
   private markupFill = "#000"
   private markupStroke = "#000"
   
-  private dungeonPath: PathMaster = new PathMaster()
+  private dungeonPath: Flatten.Polygon = new Flatten.Polygon()
   
   private offsetX = 0
   private offsetY = 0
@@ -63,10 +62,6 @@ export class CanvasComponent implements AfterViewInit {
       element.height = this.canvasHeight = window.innerHeight
       this.draw()
     }
-  }
-  
-  constructor() {
-    paper.setup(document.createElement("canvas"))
   }
   
   ngAfterViewInit(): void {
@@ -131,12 +126,12 @@ export class CanvasComponent implements AfterViewInit {
     this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
     this.context.setTransform(this.scale, 0, 0, this.scale, this.canvasWidth / 2, this.canvasHeight / 2);
     
-    this.drawGrid()
+    this.drawDots()
     this.drawDungeon()
     this.drawMarkup()
   }
   
-  private drawGrid() {
+  private drawDots() {
     if (!this.context) {
       return
     }
@@ -168,12 +163,35 @@ export class CanvasComponent implements AfterViewInit {
       return
     }
     this.context.save()
-    this.context.setTransform(this.scale * this.halfTileSize, 0, 0, this.scale * this.halfTileSize, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
-    this.context.lineWidth = 20 / this.halfTileSize
-    this.context.fillStyle = "antiquewhite"
+    this.context.setTransform(this.scale, 0, 0, this.scale, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
+    this.context.lineWidth = 20
     
-    const path = new Path2D(this.dungeonPath.getPath())
-    this.context.fill(path, "evenodd")
+    const path = new Path2D([...this.dungeonPath.faces].reduce((acc, face) => acc + face.svg(), ""))
+    
+    
+    const patternElement = document.createElement('canvas')
+    patternElement.width = this.TILE_SIZE;
+    patternElement.height = this.TILE_SIZE;
+    const patternContext = patternElement.getContext("2d")
+    if (!patternContext) {return}
+    patternContext.fillStyle = "antiquewhite"
+    patternContext.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE)
+    patternContext.beginPath()
+    patternContext.moveTo(this.halfTileSize, 0)
+    patternContext.lineTo(this.halfTileSize, this.TILE_SIZE)
+    patternContext.moveTo(0, this.halfTileSize)
+    patternContext.lineTo(this.TILE_SIZE, this.halfTileSize)
+    patternContext.closePath()
+    patternContext.strokeStyle = "#00000080"
+    patternContext.lineWidth = 5;
+    patternContext.stroke()
+    const pattern = this.context.createPattern(patternElement, null)
+    if (pattern) {
+      this.context.fillStyle = pattern
+      this.context.fill(path)
+    } else {
+      console.error("could not create dot pattern")
+    }
     this.context.stroke(path)
     
     this.context.restore()
@@ -245,8 +263,8 @@ export class CanvasComponent implements AfterViewInit {
     return Math.round(canvasCoordinate / this.halfTileSize)
   }
   
-  addPathToDungeon(path: string) {
-    this.dungeonPath.add(path)
+  addPathToDungeon(polygon: Flatten.Polygon) {
+    this.dungeonPath = Flatten.BooleanOperations.unify(this.dungeonPath, polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)))
     this.draw()
     // const newPath = new paper.Path(path)
     // let segments = newPath.segments.map((leadingSegment) => {
@@ -315,8 +333,8 @@ export class CanvasComponent implements AfterViewInit {
     // })
   }
   
-  removePathFromDungeon(path: string) {
-    this.dungeonPath.sub(path)
+  removePathFromDungeon(polygon: Flatten.Polygon) {
+    this.dungeonPath = Flatten.BooleanOperations.subtract(this.dungeonPath, polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)))
     this.draw()
     // const newPath = new paper.Path(path)
     // if (this.dungeonInteriorPath) {
@@ -328,8 +346,10 @@ export class CanvasComponent implements AfterViewInit {
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
     console.log(startX + " " + startY + " " + endX + " " + endY)
-    const subPath = new paper.Path(`M ${startX} ${startY}
-                                    L ${endX} ${endY}`)
+    // const subPath = new paper.Path(`M ${startX} ${startY}
+    //                                 L ${endX} ${endY}`)
+                                    
+                                    
     // if (this.dungeonPath) {
     //   // this.dungeonPath = this.dungeonPath.divide(subPath, {insert: false, trace: false})
     //   console.log(this.dungeonPath.pathData)
