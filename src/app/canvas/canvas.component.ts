@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
 import Flatten, { AnyShape, INSIDE } from '@flatten-js/core';
 import { PointerType } from './pointerType';
+import { PathMaster } from './pathMaster';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -36,8 +37,8 @@ export class CanvasComponent implements AfterViewInit {
   private markupFill = "#000"
   private markupStroke = "#000"
   
-  private dungeonWalls: Flatten.Edge[] = []
-  private dungeonPath: Flatten.Polygon = new Flatten.Polygon()
+  // private dungeonWalls: Flatten.Edge[] = []
+  private dungeonStructure: PathMaster = new PathMaster() //Flatten.Polygon = new Flatten.Polygon()
   
   private offsetX = 0
   private offsetY = 0
@@ -119,50 +120,6 @@ export class CanvasComponent implements AfterViewInit {
     return ((clientY - this.canvasHeight / 2) / this.scale - this.offsetY) / this.halfTileSize
   }
   
-  private removeDuplicatePoints(arr: Flatten.Point[]) {
-    const empty: Flatten.Point[] = []
-    return arr.reduce((acc, curr) => {
-      let found = false
-      acc.forEach((point) => {
-        if (point.x == curr.x && point.y == curr.y) {
-          found = true
-        }
-      })
-      if (!found) {
-        acc.push(curr)
-      }
-      return acc
-    }, empty)
-  }
-  
-  private arrayContainsPoint(arr: Flatten.Point[], pt: Flatten.Point) {
-    return arr.reduce((_, curr) => {
-      return curr.x == pt.x && curr.y == pt.y
-    }, false)
-  }
-  
-  private splitShapeByPoints(shape: any, pts: Flatten.Point[]) {
-    let shapes: any[] = []
-    let left: any
-    pts.filter((val) => shape.contains(val) && !(val.equalTo(shape.start) || val.equalTo(shape.end)))
-    pts.push(shape.end)
-    pts.forEach((point, index) => {
-      shapes.push()
-      if (index == 0) {
-        const split = shape.split(point)
-        left = split[1]
-        shapes.push(split[0])
-      } else if (index == pts.length) {
-        shapes.push(left)
-      } else {
-        const split = left.split(point)
-        left = split[1]
-        shapes.push(split[0])
-      }
-    })
-    return shapes
-  }
-  
   private draw() {
     if (!this.context) {
       return
@@ -210,7 +167,7 @@ export class CanvasComponent implements AfterViewInit {
     this.context.save()
     this.context.setTransform(this.scale, 0, 0, this.scale, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
     this.context.lineWidth = 20
-    const path = new Path2D([...this.dungeonPath.faces].reduce((acc, face) => acc + face.svg(), ""))
+    const path = this.dungeonStructure.dungeonPath
     
     
     const patternElement = document.createElement('canvas')
@@ -236,10 +193,8 @@ export class CanvasComponent implements AfterViewInit {
     } else {
       console.error("could not create dot pattern")
     }
-    this.dungeonWalls.forEach((edge) => {
-      const face = new Flatten.Face()
-      face.append(edge)
-      this.context?.stroke(new Path2D(face.svg()))
+    this.dungeonStructure.dungeonWalls.forEach((wall) => {
+      this.context?.stroke(wall)
     })
     
     this.context.restore()
@@ -314,54 +269,19 @@ export class CanvasComponent implements AfterViewInit {
   addPathToDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     
-    const debug = ["OUTSIDE", "INSIDE", "BOUNDARY", "CONTAINS", "INTERLACE"]
-    newPoly.edges.forEach((edge: Flatten.Edge) => {
-      let shapes: AnyShape[] = []
-      if (edge.setInclusion(this.dungeonPath) == 0) {
-        const shape = edge.shape
-        const intersects = this.dungeonPath.intersect(shape)
-        console.log(intersects)
-        if (intersects.length == 0) {
-          this.dungeonWalls.push(edge)
-        }
-        intersects.forEach((point) => {
-          shape.split(point).forEach((split: any) => {
-            if (split && !this.dungeonPath.contains(split) && this.removeDuplicatePoints(this.dungeonPath.intersect(split)).length <= 1) {
-              shapes.push(split)
-            }
-          })
-          if (true) {//})(!(point.equalTo(shape.start) || point.equalTo(shape.end))) {
-            this.dungeonWalls = this.dungeonWalls.filter((wall) => {
-              if (wall.contains(point)) {
-                console.log(this.splitShapeByPoints(wall.shape, intersects))
-                this.splitShapeByPoints(wall.shape, intersects).forEach((split: any) => {
-                  if (split && !this.arrayContainsPoint(intersects, split.start) && !this.arrayContainsPoint(intersects, split.end)) {
-                    shapes.push(split)
-                  }
-                })
-                return false
-              } else {
-                return true
-              }
-            })
-          }
-        })
-        shapes.forEach((shape) => {
-          this.dungeonWalls.push(new Flatten.Edge(shape))
-        })
-      }
-    })
-    this.dungeonPath = Flatten.BooleanOperations.unify(this.dungeonPath, newPoly)
+    this.dungeonStructure.addPolygon(newPoly)
+    
+    
   }
   
   removePathFromDungeon(polygon: Flatten.Polygon) {
-    this.dungeonPath = Flatten.BooleanOperations.subtract(this.dungeonPath, polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)))
+    //this.dungeonPath = Flatten.BooleanOperations.subtract(this.dungeonPath, polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)))
   }
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
     console.log(startX + " " + startY + " " + endX + " " + endY)
     const line = new Flatten.Line(new Flatten.Point(startX, startY), new Flatten.Point(endX, endY)).transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    console.log(this.dungeonPath.splitToIslands())
+    //console.log(this.dungeonPath.splitToIslands())
   }
   
   public clearMarkup() {
