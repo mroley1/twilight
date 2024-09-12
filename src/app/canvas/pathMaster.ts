@@ -1,4 +1,4 @@
-import Flatten, { AnyShape } from "@flatten-js/core"
+import Flatten from "@flatten-js/core"
 
 class PointCloud {
     
@@ -30,7 +30,6 @@ class PointCloud {
     }
     
     public bridge(shape: any) {
-        console.log(this._points, shape.start, shape.end)
         return this.contains(shape.start) && this.contains(shape.end)
     }
     
@@ -49,7 +48,6 @@ class PointCloud {
             }
         })
         shapes.push(shape)
-        console.log(shapes)
         return shapes
     }
 }
@@ -72,9 +70,14 @@ export class PathMaster {
     }
     
     public addPolygon(polygon: Flatten.Polygon) {
-        const debug = ["OUTSIDE", "INSIDE", "BOUNDARY", "CONTAINS", "INTERLACE"]
         
         const intersections = new PointCloud(this._dungeonPath.intersect(polygon))
+        
+        this._dungeonWalls.forEach((wall) => {
+            polygon.intersect(wall.shape).forEach((intersect) => {
+                intersections.add(intersect)
+            })
+        })
         
         let shapes: Flatten.AnyShape[] = []
         polygon.edges.forEach((edge: Flatten.Edge) => {
@@ -88,7 +91,6 @@ export class PathMaster {
         this._dungeonWalls = this._dungeonWalls.filter((wall) => {
             if (intersections.hits(wall)) {
                 intersections.splitShape(wall.shape).forEach((split) => {
-                    console.log(polygon, split, split.middle())
                     if (!polygon.contains(split.middle()) || polygon.findEdgeByPoint(split.middle())) {
                         shapes.push(split)
                     }
@@ -98,9 +100,11 @@ export class PathMaster {
                 return true
             }
         })
+        
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
+        
         this._dungeonPath = Flatten.BooleanOperations.unify(this._dungeonPath, polygon)
     }
 }
