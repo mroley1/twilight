@@ -1,4 +1,4 @@
-import Flatten from "@flatten-js/core"
+import Flatten, { AnyShape } from "@flatten-js/core"
 
 class PointCloud {
     
@@ -29,9 +29,14 @@ class PointCloud {
         return this._points.some((point)=>shape.contains(point))
     }
     
+    public bridge(shape: any) {
+        console.log(this._points, shape.start, shape.end)
+        return this.contains(shape.start) && this.contains(shape.end)
+    }
+    
     public splitShape(shape: any) {
         let shapes: any[] = []
-        const points = this._points.filter((val) => shape.contains(val) && !(val.equalTo(shape.start) || val.equalTo(shape.end)))
+        const points: Flatten.Point[] = shape.sortPoints(this._points.filter((val) => shape.contains(val) && !(val.equalTo(shape.start) || val.equalTo(shape.end))))
         points.forEach((point, index) => {
             if (index == 0) {
                 const split = shape.split(point)
@@ -44,6 +49,7 @@ class PointCloud {
             }
         })
         shapes.push(shape)
+        console.log(shapes)
         return shapes
     }
 }
@@ -72,25 +78,18 @@ export class PathMaster {
         
         let shapes: Flatten.AnyShape[] = []
         polygon.edges.forEach((edge: Flatten.Edge) => {
-        if (edge.setInclusion(this._dungeonPath) == 0) {
-            const shape = edge.shape
-            const edgeIntersects = this._dungeonPath.intersect(shape)
-            if (edgeIntersects.length == 0) {
-                this._dungeonWalls.push(edge)
-            }
-            edgeIntersects.forEach((point) => {
-                shape.split(point).forEach((split: any) => {
-                    if (split && !this._dungeonPath.contains(split) && new PointCloud(this._dungeonPath.intersect(split)).length <= 1) {
-                        shapes.push(split)
-                    }
-                })
+            intersections.splitShape(edge.shape).forEach((sliver) => {
+                if (!this._dungeonPath.contains(sliver.middle())) {
+                    shapes.push(sliver)
+                }
             })
-        }
         })
+        
         this._dungeonWalls = this._dungeonWalls.filter((wall) => {
             if (intersections.hits(wall)) {
                 intersections.splitShape(wall.shape).forEach((split) => {
-                    if (!(intersections.contains(split.start) && intersections.contains(split.end) && polygon.contains(split.middle()))) {
+                    console.log(polygon, split, split.middle())
+                    if (!polygon.contains(split.middle()) || polygon.findEdgeByPoint(split.middle())) {
                         shapes.push(split)
                     }
                 })
