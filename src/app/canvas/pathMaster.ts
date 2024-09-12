@@ -101,6 +101,10 @@ export class PathMaster {
             }
         })
         
+        this._dungeonWalls = this._dungeonWalls.filter((wall) => 
+            !(polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0)
+        )
+        
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
