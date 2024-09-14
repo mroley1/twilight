@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, Signal, viewChild } from '@angular/core';
-import Flatten, { AnyShape, INSIDE } from '@flatten-js/core';
+import Flatten from '@flatten-js/core';
 import { PointerType } from './pointerType';
 import { PathMaster } from './pathMaster';
 
@@ -268,20 +268,19 @@ export class CanvasComponent implements AfterViewInit {
   
   addPathToDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    
     this.dungeonStructure.addPolygon(newPoly)
-    
-    
   }
   
   removePathFromDungeon(polygon: Flatten.Polygon) {
-    //this.dungeonPath = Flatten.BooleanOperations.subtract(this.dungeonPath, polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)))
+    const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
+    this.dungeonStructure.removePolygon(newPoly)
   }
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
     console.log(startX + " " + startY + " " + endX + " " + endY)
-    const line = new Flatten.Line(new Flatten.Point(startX, startY), new Flatten.Point(endX, endY)).transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    //console.log(this.dungeonPath.splitToIslands())
+    const line = new Flatten.Segment(new Flatten.Point(startX, startY), new Flatten.Point(endX, endY)).transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
+    
+    this.dungeonStructure.addEdge(new Flatten.Edge(line))
   }
   
   public clearMarkup() {

@@ -71,7 +71,7 @@ export class PathMaster {
     
     public addPolygon(polygon: Flatten.Polygon) {
         
-        const intersections = new PointCloud(this._dungeonPath.intersect(polygon))
+        const intersections = new PointCloud()
         
         this._dungeonWalls.forEach((wall) => {
             polygon.intersect(wall.shape).forEach((intersect) => {
@@ -80,6 +80,7 @@ export class PathMaster {
         })
         
         let shapes: Flatten.AnyShape[] = []
+        
         polygon.edges.forEach((edge: Flatten.Edge) => {
             intersections.splitShape(edge.shape).forEach((sliver) => {
                 if (!this._dungeonPath.contains(sliver.middle())) {
@@ -110,5 +111,68 @@ export class PathMaster {
         })
         
         this._dungeonPath = Flatten.BooleanOperations.unify(this._dungeonPath, polygon)
+        
+        console.log(this._dungeonWalls)
+    }
+    
+    public removePolygon(polygon: Flatten.Polygon) {
+        
+        const intersections = new PointCloud()
+        
+        this._dungeonWalls.forEach((wall) => {
+            polygon.intersect(wall.shape).forEach((intersect) => {
+                intersections.add(intersect)
+            })
+        })
+        
+        let shapes: Flatten.AnyShape[] = []
+        
+        this._dungeonWalls = this._dungeonWalls.filter((wall) => {
+            if (intersections.hits(wall)) {
+                intersections.splitShape(wall.shape).forEach((split) => {
+                    if (!polygon.contains(split.middle())) {
+                        shapes.push(split)
+                    }
+                })
+                return false
+            } else {
+                return true
+            }
+        })
+        
+        this._dungeonWalls = this._dungeonWalls.filter((wall) => 
+            !(polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0)
+        )
+        
+        this._dungeonPath = Flatten.BooleanOperations.subtract(this._dungeonPath, polygon)
+        
+        polygon.edges.forEach((edge: Flatten.Edge) => {
+            intersections.splitShape(edge.shape).forEach((sliver) => {
+                if (this._dungeonPath.contains(sliver.middle())) {
+                    shapes.push(sliver)
+                }
+            })
+        })
+        
+        shapes.forEach((shape) => {
+            this._dungeonWalls.push(new Flatten.Edge(shape))
+        })
+        
+    }
+    
+    public addEdge(edge: Flatten.Edge) {
+        const intersections = new PointCloud(this._dungeonPath.intersect(edge.shape))
+        
+        let shapes: Flatten.AnyShape[] = []
+        
+        intersections.splitShape(edge.shape).forEach((split) => {
+            if (this._dungeonPath.contains(split.middle())) {
+                shapes.push(split)
+            }
+        })
+        
+        shapes.forEach((shape) => {
+            this._dungeonWalls.push(new Flatten.Edge(shape))
+        })
     }
 }
