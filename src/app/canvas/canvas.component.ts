@@ -167,8 +167,7 @@ export class CanvasComponent implements AfterViewInit {
     this.context.save()
     this.context.setTransform(this.scale, 0, 0, this.scale, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
     this.context.lineWidth = 20
-    const path = this.dungeonStructure.dungeonPath
-    
+    const path = this.dungeonStructure.areaPath
     
     const patternElement = document.createElement('canvas')
     patternElement.width = this.TILE_SIZE;
@@ -193,7 +192,7 @@ export class CanvasComponent implements AfterViewInit {
     } else {
       console.error("could not create dot pattern")
     }
-    this.dungeonStructure.dungeonWalls.forEach((wall) => {
+    this.dungeonStructure.wallsPaths.forEach((wall) => {
       this.context?.stroke(wall)
     })
     

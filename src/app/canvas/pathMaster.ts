@@ -57,12 +57,20 @@ export class PathMaster {
     private _dungeonWalls: Flatten.Edge[] = []
     private _dungeonPath: Flatten.Polygon = new Flatten.Polygon()
     
-    get dungeonPath() {
-        return new Path2D([...this._dungeonPath.faces].reduce((acc, face) => acc + face.svg(), ""))
+    private _areaPath: Path2D = new Path2D()
+    private _wallsPaths: Path2D[] = []
+    
+    get areaPath() {
+        return this._areaPath
     }
     
-    get dungeonWalls() {
-        return this._dungeonWalls.map((edge) => {
+    get wallsPaths() {
+        return this._wallsPaths
+    }
+    
+    private refreshPaths() {
+        this._areaPath = new Path2D([...this._dungeonPath.faces].reduce((acc, face) => acc + face.svg(), ""))
+        this._wallsPaths = this._dungeonWalls.map((edge) => {
             const face = new Flatten.Face()
             face.append(edge)
             return new Path2D(face.svg())
@@ -112,7 +120,7 @@ export class PathMaster {
         
         this._dungeonPath = Flatten.BooleanOperations.unify(this._dungeonPath, polygon)
         
-        console.log(this._dungeonWalls)
+        this.refreshPaths()
     }
     
     public removePolygon(polygon: Flatten.Polygon) {
@@ -158,6 +166,7 @@ export class PathMaster {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
         
+        this.refreshPaths()
     }
     
     public addEdge(edge: Flatten.Edge) {
@@ -174,5 +183,7 @@ export class PathMaster {
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
+        
+        this.refreshPaths()
     }
 }
