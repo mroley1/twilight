@@ -268,18 +268,19 @@ export class CanvasComponent implements AfterViewInit {
   addPathToDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     this.dungeonStructure.addPolygon(newPoly)
+    this.draw()
   }
   
   removePathFromDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     this.dungeonStructure.removePolygon(newPoly)
+    this.draw()
   }
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
-    console.log(startX + " " + startY + " " + endX + " " + endY)
     const line = new Flatten.Segment(new Flatten.Point(startX, startY), new Flatten.Point(endX, endY)).transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    
     this.dungeonStructure.addEdge(new Flatten.Edge(line))
+    this.draw()
   }
   
   public clearMarkup() {
@@ -332,6 +333,16 @@ export class CanvasComponent implements AfterViewInit {
     }
     this.draw()
     return rect
+  }
+  
+  markupPolygon(points: {x:number, y:number}[]) {
+    this.markupState = {
+      points: [],
+      rects: [],
+      polygons: [points],
+      lines: []
+    }
+    this.draw()
   }
 
 }
