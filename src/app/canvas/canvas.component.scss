@@ -18,6 +18,10 @@
     &.DEFAULT {
         cursor: default;
     }
+    
+    &.ERROR {
+        cursor: not-allowed;
+    }
 }
 
 .canvas {

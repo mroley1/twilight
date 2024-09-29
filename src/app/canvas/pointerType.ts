@@ -1,4 +1,5 @@
 export enum PointerType {
     DEFAULT,
-    MOVE
+    MOVE,
+    ERROR
 }

@@ -103,7 +103,6 @@ export class Polygon implements EditorState {
                         return new Flatten.Segment(new Flatten.Point(current.x, current.y), new Flatten.Point(next.x, next.y))
                     })
                     polygon.addFace(faces)
-                    console.log(polygon)
                     canvasComponent.addPathToDungeon(polygon)
                     this.drawing = false
                     this.points = []
@@ -144,8 +143,13 @@ export class Wall implements EditorState {
                 }
                 break;
             case "pointerup":
-                canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                const closestX = canvasComponent.getNearestPointX(event.clientX);
+                const closestY = canvasComponent.getNearestPointY(event.clientY)
+                if (this.startingPoint.x != closestX || this.startingPoint.y != closestY) {
+                    canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, closestX, closestY)
+                }
                 this.drawing = false;
+                canvasComponent.clearMarkup()
                 break;
         }
     };

@@ -1,4 +1,4 @@
-import Flatten, { AnyShape, Polygon, Vector } from "@flatten-js/core"
+import Flatten from "@flatten-js/core"
 
 class PointCloud {
     
@@ -57,7 +57,9 @@ export class PathMaster {
     private _dungeonWalls: Flatten.Edge[] = []
     private _dungeonPath: Flatten.Polygon = new Flatten.Polygon()
     
+    // Path2D of area of dungeon
     private _areaPath: Path2D = new Path2D()
+    // Path2D of each wall in dungeon
     private _wallsPaths: Path2D[] = []
     
     get areaPath() {
@@ -68,6 +70,7 @@ export class PathMaster {
         return this._wallsPaths
     }
     
+    // sets the this._areaPath and this._wallsPaths variables based off of this._dungeonWalls and this._dungeonPath
     private refreshPaths() {
         this._areaPath = new Path2D([...this._dungeonPath.faces].reduce((acc, face) => acc + face.svg(), ""))
         this._wallsPaths = this._dungeonWalls.map((edge) => {
@@ -77,18 +80,19 @@ export class PathMaster {
         })
     }
     
+    // add polygon to dungeon
     public addPolygon(polygon: Flatten.Polygon) {
         
+        // point cloud of each place where new polygon walls intersect the existing dungeon
         const intersections = new PointCloud()
-        
         this._dungeonWalls.forEach((wall) => {
             polygon.intersect(wall.shape).forEach((intersect) => {
                 intersections.add(intersect)
             })
         })
         
+        // array of each wall in new shape that are outside of the existing dungeon splitting as necessary
         let shapes: Flatten.AnyShape[] = []
-        
         polygon.edges.forEach((edge: Flatten.Edge) => {
             intersections.splitShape(edge.shape).forEach((sliver) => {
                 if (!this._dungeonPath.contains(sliver.middle())) {
@@ -97,8 +101,11 @@ export class PathMaster {
             })
         })
         
+        // remove any existing dungeon walls that are inside the new polygon splitting as necessary
         this._dungeonWalls = this._dungeonWalls.filter((wall) => {
-            if (intersections.hits(wall)) {
+            if (polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0) {
+                return false
+            } else if (intersections.hits(wall)) {
                 intersections.splitShape(wall.shape).forEach((split) => {
                     if (!polygon.contains(split.middle()) || polygon.findEdgeByPoint(split.middle())) {
                         shapes.push(split)
@@ -110,41 +117,39 @@ export class PathMaster {
             }
         })
         
-        this._dungeonWalls = this._dungeonWalls.filter((wall) => 
-            !(polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0)
-        )
-            
+        // add all new walls to dungeon
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
         
+        // ensure that new polygon is able to use boolean oporations and split into appropriate sub polygons
         const normalized = normalizePolygon(polygon)
         
+        // add normalized polygons to dungeon
         normalized.forEach((poly) => {
             this._dungeonPath = Flatten.BooleanOperations.unify(this._dungeonPath, poly)
         })
         
-        this._dungeonPath.recreateFaces()
-        
-        //this._dungeonPath = Flatten.BooleanOperations.unify(this._dungeonPath, polygon)
-        
+        // refresh path objects
         this.refreshPaths()
     }
     
     public removePolygon(polygon: Flatten.Polygon) {
         
+        // point cloud of each place where new polygon walls intersect the existing dungeon
         const intersections = new PointCloud()
-        
         this._dungeonWalls.forEach((wall) => {
             polygon.intersect(wall.shape).forEach((intersect) => {
                 intersections.add(intersect)
             })
         })
         
+        // remove any walls that intersect with the new shape splitting where necesarry
         let shapes: Flatten.AnyShape[] = []
-        
         this._dungeonWalls = this._dungeonWalls.filter((wall) => {
-            if (intersections.hits(wall)) {
+            if (polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0) {
+                return false
+            } else if (intersections.hits(wall)) {
                 intersections.splitShape(wall.shape).forEach((split) => {
                     if (!polygon.contains(split.middle())) {
                         shapes.push(split)
@@ -156,12 +161,15 @@ export class PathMaster {
             }
         })
         
-        this._dungeonWalls = this._dungeonWalls.filter((wall) => 
-            !(polygon.contains(wall.shape) && polygon.intersect(wall.shape).length == 0)
-        )
+        // ensure that new polygon is able to use boolean oporations and split into appropriate sub polygons
+        const normalized = normalizePolygon(polygon)
         
-        this._dungeonPath = Flatten.BooleanOperations.subtract(this._dungeonPath, polygon)
+        // add normalized polygons to dungeon
+        normalized.forEach((poly) => {
+            this._dungeonPath = Flatten.BooleanOperations.subtract(this._dungeonPath, poly)
+        })
         
+        // add any walls that need to line the inside of the new cavity
         polygon.edges.forEach((edge: Flatten.Edge) => {
             intersections.splitShape(edge.shape).forEach((sliver) => {
                 if (this._dungeonPath.contains(sliver.middle())) {
@@ -170,36 +178,42 @@ export class PathMaster {
             })
         })
         
+        // add new walls to the dungeon
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
         
+        // refresh path objects
         this.refreshPaths()
     }
     
+    // add wall to dungeon internals
     public addEdge(edge: Flatten.Edge) {
+        
+        // all intersection points of the edge and the dungeon walls
         const intersections = new PointCloud(this._dungeonPath.intersect(edge.shape))
         
+        // shapes of lines that fall inside of dungeon
         let shapes: Flatten.AnyShape[] = []
-        
         intersections.splitShape(edge.shape).forEach((split) => {
             if (this._dungeonPath.contains(split.middle())) {
                 shapes.push(split)
             }
         })
         
+        // add lines to dungeon walls
         shapes.forEach((shape) => {
             this._dungeonWalls.push(new Flatten.Edge(shape))
         })
         
+        // refresh path objects
         this.refreshPaths()
     }
 }
 
 function  normalizePolygon(polygon: Flatten.Polygon) {
     
-    const originalPoints = new PointCloud(polygon.vertices)
-    
+    // point cload of all points that are vertecies or intersections
     const allPoints = new PointCloud()
     polygon.edges.forEach((edge) => {
         polygon.intersect(edge.shape).forEach((point) => {
@@ -207,179 +221,88 @@ function  normalizePolygon(polygon: Flatten.Polygon) {
         })
     })
     
-    const edges: Flatten.PolygonEdge[] = []
+    // split polygon's edges around allPoints and store each edge
+    let edges: Flatten.PolygonEdge[] = []
     polygon.edges.forEach((edge) => {
         allPoints.splitShape(edge.shape).forEach((split) => {
             edges.push(split)
         })
     })
     
-    // const pointMap = new Map<Flatten.Point, Flatten.Point[]>()
-    // allPoints.points.forEach((point) => {
-    //     const relevantPoints = edges
-    //         .filter((edge) => edge.contains(point))
-    //         .map((edge) => {
-    //             if (edge.start.equalTo(point)) {
-    //                 return edge.end
-    //             } else {
-    //                 return edge.start
-    //             }
-    //         })
-    //     pointMap.set(point, relevantPoints)
-    // });
-    
-    // pointMap.forEach((neighbors, point) => {
-    //     if (neighbors.length != 2) {
-    //         neighbors.forEach((pathPoint) => {
-    //             let visited = new Set()
-    //             visited.add(point)
-    //             let queue = [point]
-    //             while (queue.length) {
-    //                 const current = queue.shift()
-    //             }
-    //         })
-    //     }
-    // })
-    
-    
-    // intersections.forEach((apexPoint) => {
-    //     const concerned = edges.filter((edge) => edge.contains(apexPoint))
-    //     concerned.forEach((edge) => {
-    //         if (edge.start.equalTo(apexPoint)) {
-                
-    //             function bfs() {}
-                
-    //             let point = edge.end
-    //             let currentEdge = edge
-                
-    //         } else {
-                
-    //         }
-    //     })
-    //     console.log(concerned)
-    // })
-    
-    
-    // polygon.edges.forEach((edge) => {
-    //     edge.shape.intersect(polygon).forEach((point: Flatten.Point) => {
-    //         if (!original.contains(point)) {
-    //             const newEdges = []
-    //             let e
-    //             let done = false
-    //             while (!done) {
-    //                 if (e == undefined) {
-    //                     newEdges.push(edge.shape.split(point)[1])
-    //                     e = edge.prev
-    //                 } else if (intersections.hits(edge.shape)) {
-    //                     newEdges.push(edge.shape.split(point)[0])
-    //                     done = true
-    //                 } else {
-    //                     newEdges.push(edge.shape)
-    //                     e = e.prev
-    //                 }
-    //                 console.log(e)
-    //             }
-    //             console.log(newEdges)
-    //             const newPolygon = new Flatten.Polygon(newEdges)
-    //             polygons.push(newPolygon)
-    //         }
-    //     })
-    // })
-    
-    
+    // used to store individual polygons
     let polygons: Flatten.Polygon[] = []
     
-    const intersections = allPoints.points.filter((point) => edges.filter((edge) => edge.contains(point)).length != 2)
-    
-    intersections.forEach((intersection) => {
-        const multiline = new Flatten.Multiline([new Flatten.Segment(intersection, intersection)])
-        polygon = polygon.cut(multiline) as unknown as Flatten.Polygon
-    })
-    
-    // polygon.edges.forEach((edge) => {
-    //     console.log(edge.box)
-    // })
-    
-    // intersections.forEach((intersection) => {
-    //     polygon
-    // })
-    
-    // console.log(edges)
-    // console.log(new Flatten.Polygon(edges.map((edge)=> edge.shape)))
-    
-    
-    function toDeg(rad:number) {return rad * (180/Math.PI)}
-    
-    
-    
-    
-    // polygon.edges.forEach((edge: Flatten.PolygonEdge) => {
-    //     let closest = edge.next
-    //     let closestAngle = 2 * Math.PI
-    //     polygon.edges.hit(edge.end)
-    //         .forEach((hitEdge: any) => {
-    //             if (edge.shape.svg() == hitEdge.shape.svg()) {
-    //                 return
-    //             }
-    //             let shape: Flatten.Segment|Flatten.Arc
-    //             if (hitEdge.shape.end.equalTo(edge.shape.end)) {
-    //                 shape = hitEdge.shape.reverse()
-    //             } else {
-    //                 shape = hitEdge.shape
-    //             }
-    //             console.log(toDeg(edge.shape.tangentInEnd().slope))
-    //             console.log(toDeg(shape.tangentInStart().slope))
-    //             const testAngle = edge.shape.tangentInEnd().angleTo(shape.tangentInStart())
-    //             console.log(toDeg(testAngle))
-    //             if (testAngle < closestAngle) {
-    //                 closestAngle = testAngle
-    //                 closest = hitEdge
-    //             }
-    //         }
-    //     )
-    //     console.log("final:", closestAngle * (180/Math.PI))
-    //     console.log(closest)
-    //     if (closest.end.equalTo(edge.end)) {
-    //         closest.shape = closest.shape.reverse()
-    //     }
-    //     edge.next = closest
-    //     closest.prev = edge
-    // })
-    
-    
-    // console.log(new Flatten.Vector(0, 1).invert())
-    
-    // console.log(toDeg(new Flatten.Vector(1, 0).angleTo(new Flatten.Vector(0, 1).invert())))
-    // console.log(toDeg(new Flatten.Vector(1, 0).angleTo(new Flatten.Vector(0, -1))))
-    // console.log(toDeg(new Flatten.Vector(-1, -1).angleTo(new Flatten.Vector(-1, 0))))
-    // console.log(toDeg(new Flatten.Vector(-1, -1).angleTo(new Flatten.Vector(-1, 1))))
-    
-    // console.log(" ")
-    
-    // console.log(toDeg(new Flatten.Vector(1, 0).slope))
-    // console.log(toDeg(new Flatten.Vector(-1, 0).slope))
-    // console.log(toDeg(new Flatten.Vector(0, -1).slope))
-    
-    // console.log(" ")
-    
-    // console.log(toDeg(new Flatten.Vector(1, 0).slope - new Flatten.Vector(0, 1).slope))
-    // console.log(toDeg(new Flatten.Vector(1, 0).slope - new Flatten.Vector(0, -1).slope))
-    
-    // polygon.recreateFaces()
-    
-    
-    let a: number = 0
-    polygon.edges.forEach((edge: Flatten.PolygonEdge) => {
-            a += edge.shape.tangentInEnd().angleTo(edge.next.shape.tangentInEnd()) - Math.PI
-    })
-    if (a > 0) {
-        polygon.reverse()
+    // return string representation of a point
+    function stringifyPoint(point: Flatten.Point) {
+        return point.x + "," + point.y
     }
     
+    // return string representation of an edge
+    // simply a representation of the middle point which should be unique
+    function stringifyEdge(edge: Flatten.Edge) {
+        return stringifyPoint(edge.middle())
+    }
     
-    console.log(polygon)
+    // maps the string representation of a point to the dges that lead away from that point
+    const connections = new Map<string, Flatten.Edge[]>()
+    allPoints.points.forEach((point) => 
+        connections.set(stringifyPoint(point), edges.filter((edge) => 
+            edge.start.equalTo(point)
+        ))
+    );
     
+    // implementation of BFS that returns the shortest loop that this edge is a part of
+    // @returns {(Flatten.Arc|Flatten.Segment)[]}
+    function bfsLoop(startingEdge: Flatten.Edge) {
+        const queue = [startingEdge]
+        const parents = new Map<string, Flatten.Edge>()
+        
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            connections.get(stringifyPoint(current.end))?.forEach(neighbor => {
+                if (!parents.has(stringifyEdge(neighbor))) {
+                    parents.set(stringifyEdge(neighbor), current)
+                    queue.push(neighbor)
+                }
+                
+            })
+        }
+        
+        const path: any[] = []
+        let current: Flatten.Edge|undefined = startingEdge
+        while (current) {
+            const next: Flatten.Edge = parents.get(stringifyEdge(current))!
+            current!.prev = next
+            next.next = current!
+            current = next
+            path.push(current)
+            if (stringifyEdge(next) == stringifyEdge(startingEdge)) {
+                current = undefined;
+            }
+        }
+        path.reverse()
+        return path
+    }
     
+    // break polygon into uniqe loops of edges and form polygons around these
+    while (edges.length > 0) {
+        const polyEdges = bfsLoop(edges[0])
+        
+        let newPoly = new Flatten.Polygon(polyEdges as any)
+        let a: number = 0
+        newPoly.edges.forEach((edge: Flatten.PolygonEdge) => {
+                a += edge.shape.tangentInEnd().angleTo(edge.next.shape.tangentInEnd()) - Math.PI
+        })
+        if (a > 0) {
+            newPoly.reverse()
+        }
+        
+        polygons.push(newPoly)
+        
+        polyEdges.forEach((polyEdge) => {
+            edges = edges.filter((edge) => stringifyEdge(polyEdge) != stringifyEdge(edge))
+        })
+    }
     
-    return [polygon]
+    return polygons
 }
