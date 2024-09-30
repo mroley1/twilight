@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input
 import Flatten from '@flatten-js/core';
 import { PointerType } from './pointerType';
 import { PathMaster } from './pathMaster';
+import { MarkupType, MarkupTypes } from './markupType';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -28,15 +29,6 @@ export class CanvasComponent implements AfterViewInit {
   slateReferenceSignal: Signal<ElementRef<HTMLDivElement>> = viewChild.required('slate')
   context: CanvasRenderingContext2D|undefined
   
-  private markupState: MarkupState = {
-    points: [{x: -2, y: -2}, {x: -1, y: -1}, {x: 0, y: 0}],
-    rects: [{startX: 1, startY: 1, endX: 2, endY: 2}],
-    polygons: [[{x: -4, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
-    lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
-  }
-  private markupFill = "#000"
-  private markupStroke = "#000"
-  
   // private dungeonWalls: Flatten.Edge[] = []
   private dungeonStructure: PathMaster = new PathMaster() //Flatten.Polygon = new Flatten.Polygon()
   
@@ -51,10 +43,14 @@ export class CanvasComponent implements AfterViewInit {
   private halfTileSize = this.TILE_SIZE / 2
   
   private BG_COLOR = "grey"
-  private MARKUP_ADD_FILL = "#2288"
-  private MARKUP_DEL_FILL = "#8228"
-  private MARKUP_ADD_STROKE = "#33F"
-  private MARKUP_DEL_STROKE = "#F33"
+  
+  private markupType: MarkupType = MarkupTypes.DEFAULT
+  private markupState: MarkupState = {
+    points: [{x: -2, y: -2}, {x: -1, y: -1}, {x: 0, y: 0}],
+    rects: [{startX: 1, startY: 1, endX: 2, endY: 2}],
+    polygons: [[{x: -4, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
+    lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
+  }
   
   @HostListener('window:resize')
   private setContextSize() {
@@ -204,9 +200,9 @@ export class CanvasComponent implements AfterViewInit {
       return
     }
     this.context.save()
-    this.context.fillStyle = this.markupFill
+    this.context.fillStyle = this.markupType.fill
     this.context.lineWidth = 10;
-    this.context.strokeStyle = this.markupStroke
+    this.context.strokeStyle = this.markupType.stroke
     this.markupState.points.forEach((point) => {
       this.context?.beginPath()
       this.context?.ellipse(this.tcX(point.x), this.tcY(point.y), 20, 20, 0, 0, Math.PI * 2)
@@ -316,15 +312,19 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   // based on client coordinates
-  markupRectFromPoints(startX: number, startY: number, endX: number, endY: number, deleting: boolean) {
+  markupRectFromPoints(startX: number, startY: number, endX: number, endY: number) {
     const rect = {
       startX: Math.floor(this.tcbX(Math.min(startX, endX))),
       startY: Math.floor(this.tcbY(Math.min(startY, endY))),
       endX: Math.ceil(this.tcbX(Math.max(startX, endX))),
       endY: Math.ceil(this.tcbY(Math.max(startY, endY))),
     }
-    this.markupFill = deleting ? this.MARKUP_DEL_FILL : this.MARKUP_ADD_FILL
-    this.markupStroke = deleting ? this.MARKUP_DEL_STROKE : this.MARKUP_ADD_STROKE
+    if (rect.startX == rect.endX) {
+      rect.endX += 1
+    }
+    if (rect.startY == rect.endY) {
+      rect.endY += 1
+    }
     this.markupState = {
       points: [],
       rects: [rect],
@@ -343,6 +343,10 @@ export class CanvasComponent implements AfterViewInit {
       lines: []
     }
     this.draw()
+  }
+  
+  setMarkupType(markupType: MarkupType) {
+    this.markupType = markupType
   }
 
 }

@@ -1,6 +1,7 @@
-import Flatten, { CircularLinkedList, LinkedListElement } from "@flatten-js/core";
+import Flatten from "@flatten-js/core";
 import { CanvasComponent } from "../canvas/canvas.component";
 import { PointerType } from "../canvas/pointerType";
+import { MarkupTypes } from "../canvas/markupType";
 
 export interface EditorState {
     name: string
@@ -41,21 +42,22 @@ export class Rect implements EditorState {
     drawing = false
     start: number|undefined
     startingPoint = {x: 0, y: 0}
-    deleting = false
+    deleting = false;
     finalRect: {startX: number, startY: number, endX: number, endY: number}|undefined
     handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
                 this.deleting = event.button == 2;
                 this.startingPoint = {x: event.clientX, y: event.clientY}
-                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY, this.deleting)
+                canvasComponent.setMarkupType(this.deleting ? MarkupTypes.REMOVE : MarkupTypes.ADD)
+                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
                 this.drawing = true
                 break;
             case "pointermove":
                 if (this.drawing) {
-                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY, this.deleting)
+                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
                 } else {
-                    canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY, this.deleting)
+                    canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY)
                 }
                 break;
             case "pointerup":
@@ -72,15 +74,18 @@ export class Rect implements EditorState {
                     this.deleting = false
                     this.finalRect = undefined
                 }
-                canvasComponent.clearMarkup()
+                canvasComponent.clearMarkup();
+                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
                 break;
             case "pointercancel":
                 this.drawing = false
-                canvasComponent.clearMarkup()
+                canvasComponent.clearMarkup();
+                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
                 break;
             case "pointerleave":
                 this.drawing = false
-                canvasComponent.clearMarkup()
+                canvasComponent.clearMarkup();
+                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
                 break;
         }
     };
@@ -90,6 +95,7 @@ export class Polygon implements EditorState {
     name = "POLYGON"
     pointerType = PointerType.DEFAULT;
     drawing = false;
+    deleting = false;
     points: {x:number,y:number}[] = []
     handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
         const boxX = canvasComponent.getNearestPointX(event.clientX)
@@ -103,12 +109,21 @@ export class Polygon implements EditorState {
                         return new Flatten.Segment(new Flatten.Point(current.x, current.y), new Flatten.Point(next.x, next.y))
                     })
                     polygon.addFace(faces)
-                    canvasComponent.addPathToDungeon(polygon)
-                    this.drawing = false
-                    this.points = []
+                    if (this.deleting) {
+                        canvasComponent.removePathFromDungeon(polygon)
+                    } else {
+                        canvasComponent.addPathToDungeon(polygon)
+                    }
+                    this.drawing = false;
+                    canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+                    this.points = [];
                 } else {
-                    this.drawing = true
-                    this.points.unshift({x: boxX, y: boxY})
+                    if (!this.drawing) {
+                        this.deleting = event.button == 2;
+                        canvasComponent.setMarkupType(this.deleting ? MarkupTypes.REMOVE : MarkupTypes.ADD);
+                        this.drawing = true;
+                    }
+                    this.points.unshift({x: boxX, y: boxY});
                 }
                 break;
             case "pointermove":
@@ -132,8 +147,11 @@ export class Wall implements EditorState {
     handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
-                this.startingPoint = {x: canvasComponent.getNearestPointX(event.clientX), y: canvasComponent.getNearestPointY(event.clientY)}
-                this.drawing = true;
+                if (!this.drawing) {
+                    this.startingPoint = {x: canvasComponent.getNearestPointX(event.clientX), y: canvasComponent.getNearestPointY(event.clientY)}
+                    this.drawing = true;
+                    canvasComponent.setMarkupType(MarkupTypes.BOLD);
+                }
                 break;
             case "pointermove":
                 if (this.drawing) {
@@ -146,10 +164,10 @@ export class Wall implements EditorState {
                 const closestX = canvasComponent.getNearestPointX(event.clientX);
                 const closestY = canvasComponent.getNearestPointY(event.clientY)
                 if (this.startingPoint.x != closestX || this.startingPoint.y != closestY) {
-                    canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, closestX, closestY)
+                    canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, closestX, closestY);
+                    this.drawing = false;
+                    canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
                 }
-                this.drawing = false;
-                canvasComponent.clearMarkup()
                 break;
         }
     };
