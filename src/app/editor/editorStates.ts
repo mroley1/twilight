@@ -6,21 +6,22 @@ import { MarkupTypes } from "../canvas/markupType";
 export interface EditorState {
     name: string
     pointerType: PointerType
-    handleEvent: (event: PointerEvent, canvasComponent: CanvasComponent) => void
+    handleEvent: (event: Event, canvasComponent: CanvasComponent) => void
 }
 
 export class Move implements EditorState {
     name = "MOVE";
     pointerType = PointerType.MOVE;
     private moving = false;
-    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
+    handleEvent(event: Event, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
                 this.moving = true
                 break;
             case "pointermove":
+                var pointerEvent: PointerEvent = event as any
                 if (this.moving) {
-                    canvasComponent.addOffest(event.movementX, event.movementY)
+                    canvasComponent.addOffest(pointerEvent.movementX, pointerEvent.movementY)
                 }
                 break;
             case "pointerup":
@@ -44,25 +45,31 @@ export class Rect implements EditorState {
     startingPoint = {x: 0, y: 0}
     deleting = false;
     finalRect: {startX: number, startY: number, endX: number, endY: number}|undefined
-    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
+    cancelDraw(canvasComponent: CanvasComponent) {
+        this.drawing = false;
+        canvasComponent.clearMarkup();
+        canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+    }
+    handleEvent(event: Event, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
-                this.deleting = event.button == 2;
-                this.startingPoint = {x: event.clientX, y: event.clientY}
+                var pointerEvent: PointerEvent = event as any
+                this.deleting = pointerEvent.button == 2;
+                this.startingPoint = {x: pointerEvent.clientX, y: pointerEvent.clientY}
                 canvasComponent.setMarkupType(this.deleting ? MarkupTypes.REMOVE : MarkupTypes.ADD)
-                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
+                this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, pointerEvent.clientX, pointerEvent.clientY)
                 this.drawing = true
                 break;
             case "pointermove":
+                var pointerEvent: PointerEvent = event as any
                 if (this.drawing) {
-                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, event.clientX, event.clientY)
+                    this.finalRect = canvasComponent.markupRectFromPoints(this.startingPoint.x, this.startingPoint.y, pointerEvent.clientX, pointerEvent.clientY)
                 } else {
-                    canvasComponent.markupRectFromPoints(event.clientX, event.clientY, event.clientX, event.clientY)
+                    canvasComponent.markupRectFromPoints(pointerEvent.clientX, pointerEvent.clientY, pointerEvent.clientX, pointerEvent.clientY)
                 }
                 break;
             case "pointerup":
-                this.drawing = false
-                if (this.finalRect) {
+                if (this.drawing && this.finalRect) {
                     const polygon = new Flatten.Polygon(
                         new Flatten.Box(this.finalRect.startX, this.finalRect.startY, this.finalRect.endX, this.finalRect.endY)
                     )
@@ -74,18 +81,19 @@ export class Rect implements EditorState {
                     this.deleting = false
                     this.finalRect = undefined
                 }
-                canvasComponent.clearMarkup();
-                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+                this.cancelDraw(canvasComponent);
                 break;
             case "pointercancel":
-                this.drawing = false
-                canvasComponent.clearMarkup();
-                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+                this.cancelDraw(canvasComponent);
                 break;
             case "pointerleave":
-                this.drawing = false
-                canvasComponent.clearMarkup();
-                canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+                this.cancelDraw(canvasComponent);
+                break;
+            case "keydown":
+                var keyboardEvent: KeyboardEvent = event as any
+                if (keyboardEvent.key == "Escape") {
+                    this.cancelDraw(canvasComponent);
+                }
                 break;
         }
     };
@@ -97,12 +105,22 @@ export class Polygon implements EditorState {
     drawing = false;
     deleting = false;
     points: {x:number,y:number}[] = []
-    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
-        const boxX = canvasComponent.getNearestPointX(event.clientX)
-        const boxY = canvasComponent.getNearestPointY(event.clientY)
+    cancelDraw(canvasComponent: CanvasComponent) {
+        this.drawing = false;
+        this.points = [];
+        canvasComponent.clearMarkup();
+        canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+    }
+    handleEvent(event: Event, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
+                var pointerEvent: PointerEvent = event as any
+                var boxX = canvasComponent.getNearestPointX(pointerEvent.clientX)
+                var boxY = canvasComponent.getNearestPointY(pointerEvent.clientY)
                 if (this.points.length != 0 && this.points[0].x == boxX && this.points[0].y == boxY) {
+                    if (this.points.length < 3) {
+                        break;
+                    }
                     const polygon = new Flatten.Polygon()
                     let faces: Flatten.Segment[] = this.points.map((current, index, reference) => {
                         const next = reference[(index + 1) % reference.length]
@@ -114,12 +132,10 @@ export class Polygon implements EditorState {
                     } else {
                         canvasComponent.addPathToDungeon(polygon)
                     }
-                    this.drawing = false;
-                    canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
-                    this.points = [];
+                    this.cancelDraw(canvasComponent);
                 } else {
                     if (!this.drawing) {
-                        this.deleting = event.button == 2;
+                        this.deleting = pointerEvent.button == 2;
                         canvasComponent.setMarkupType(this.deleting ? MarkupTypes.REMOVE : MarkupTypes.ADD);
                         this.drawing = true;
                     }
@@ -127,12 +143,21 @@ export class Polygon implements EditorState {
                 }
                 break;
             case "pointermove":
+                var pointerEvent: PointerEvent = event as any
+                var boxX = canvasComponent.getNearestPointX(pointerEvent.clientX)
+                var boxY = canvasComponent.getNearestPointY(pointerEvent.clientY)
                 if (this.drawing) {
                     const copy = Array.from(this.points)
                     copy.push({x: boxX, y: boxY})
                     canvasComponent.markupPolygon(copy)
                 } else {
                     canvasComponent.markupPoint(boxX, boxY)
+                }
+                break;
+            case "keydown":
+                var keyboardEvent: KeyboardEvent = event as any
+                if (keyboardEvent.key == "Escape") {
+                    this.cancelDraw(canvasComponent);
                 }
                 break;
         }
@@ -144,31 +169,44 @@ export class Wall implements EditorState {
     pointerType = PointerType.DEFAULT;
     drawing = false;
     startingPoint = {x: 0, y: 0};
-    handleEvent(event: PointerEvent, canvasComponent: CanvasComponent) {
+    cancelDraw(canvasComponent: CanvasComponent) {
+        this.drawing = false;
+        canvasComponent.clearMarkup();
+        canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+    }
+    handleEvent(event: Event, canvasComponent: CanvasComponent) {
         switch (event.type) {
             case "pointerdown":
+                var pointerEvent: PointerEvent = event as any
                 if (!this.drawing) {
-                    this.startingPoint = {x: canvasComponent.getNearestPointX(event.clientX), y: canvasComponent.getNearestPointY(event.clientY)}
+                    this.startingPoint = {x: canvasComponent.getNearestPointX(pointerEvent.clientX), y: canvasComponent.getNearestPointY(pointerEvent.clientY)}
                     this.drawing = true;
                     canvasComponent.setMarkupType(MarkupTypes.BOLD);
                 }
                 break;
             case "pointermove":
+                var pointerEvent: PointerEvent = event as any
                 if (this.drawing) {
-                    canvasComponent.markupLine(this.startingPoint.x, this.startingPoint.y, canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                    canvasComponent.markupLine(this.startingPoint.x, this.startingPoint.y, canvasComponent.getNearestPointX(pointerEvent.clientX), canvasComponent.getNearestPointY(pointerEvent.clientY))
                 } else {
-                    canvasComponent.markupPoint(canvasComponent.getNearestPointX(event.clientX), canvasComponent.getNearestPointY(event.clientY))
+                    canvasComponent.markupPoint(canvasComponent.getNearestPointX(pointerEvent.clientX), canvasComponent.getNearestPointY(pointerEvent.clientY))
                 }
                 break;
             case "pointerup":
-                const closestX = canvasComponent.getNearestPointX(event.clientX);
-                const closestY = canvasComponent.getNearestPointY(event.clientY)
-                if (this.startingPoint.x != closestX || this.startingPoint.y != closestY) {
+                var pointerEvent: PointerEvent = event as any
+                const closestX = canvasComponent.getNearestPointX(pointerEvent.clientX);
+                const closestY = canvasComponent.getNearestPointY(pointerEvent.clientY)
+                if (this.drawing && (this.startingPoint.x != closestX || this.startingPoint.y != closestY)) {
                     canvasComponent.addWallToDungeon(this.startingPoint.x, this.startingPoint.y, closestX, closestY);
-                    this.drawing = false;
-                    canvasComponent.setMarkupType(MarkupTypes.DEFAULT);
+                    this.cancelDraw(canvasComponent)
                 }
                 break;
+                case "keydown":
+                    var keyboardEvent: KeyboardEvent = event as any
+                    if (keyboardEvent.key == "Escape") {
+                        this.cancelDraw(canvasComponent);
+                    }
+                    break;
         }
     };
 }

@@ -21,7 +21,7 @@ interface MarkupState {
 export class CanvasComponent implements AfterViewInit {
   PointerType = PointerType
   
-  @Output() events = new EventEmitter<PointerEvent>()
+  @Output() events = new EventEmitter<Event>()
   
   @Input('pointerType') pointerType!: PointerType
   
@@ -46,10 +46,10 @@ export class CanvasComponent implements AfterViewInit {
   
   private markupType: MarkupType = MarkupTypes.DEFAULT
   private markupState: MarkupState = {
-    points: [{x: -2, y: -2}, {x: -1, y: -1}, {x: 0, y: 0}],
-    rects: [{startX: 1, startY: 1, endX: 2, endY: 2}],
-    polygons: [[{x: -4, y: 1}, {x: -1, y: 3}, {x: -3, y: 3}]],
-    lines: [{startX: 0, startY: -3, endX: 2, endY: -1}]
+    points: [],
+    rects: [],
+    polygons: [],
+    lines: []
   }
   
   @HostListener('window:resize')
@@ -74,7 +74,7 @@ export class CanvasComponent implements AfterViewInit {
   }
   
   private initListeners() {
-    const dispatchEvent = (event: PointerEvent) => {
+    const dispatchEvent = (event: Event) => {
       this.events.emit(event)
     }
     const slate = this.slateReferenceSignal().nativeElement
@@ -90,6 +90,7 @@ export class CanvasComponent implements AfterViewInit {
     slate.addEventListener("contextmenu", (e) => {
       e.preventDefault()
     })
+    window.addEventListener("keydown", dispatchEvent)
   }
   
   setPointerType(pointerType: PointerType) {

@@ -53,7 +53,7 @@ export class EditorComponent implements AfterViewInit {
     // })
   }
   
-  public receiveEvent(event: PointerEvent) {
+  public receiveEvent(event: Event) {
     this.editorState.handleEvent(event, this.canvasComponentSignal())
   }
   
