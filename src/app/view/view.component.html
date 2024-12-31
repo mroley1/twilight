@@ -1,2 +1,1 @@
-<p>view works!</p>
-{{mapId}}
+<app-canvas #canvas [pointerType]="this.viewState.pointerType" (events)="receiveEvent($event)"></app-canvas>

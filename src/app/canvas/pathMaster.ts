@@ -54,8 +54,8 @@ class PointCloud {
 
 export class PathMaster {
     
-    private _dungeonWalls: Flatten.Edge[] = []
-    private _dungeonPath: Flatten.Polygon = new Flatten.Polygon()
+    private _dungeonWalls: Flatten.Edge[]
+    private _dungeonPath: Flatten.Polygon
     
     // Path2D of area of dungeon
     private _areaPath: Path2D = new Path2D()
@@ -68,6 +68,36 @@ export class PathMaster {
     
     get wallsPaths() {
         return this._wallsPaths
+    }
+    
+    get json(): {area: Object, walls: string[]} {
+        return {
+            area: this._dungeonPath.toJSON(),
+            walls: this._dungeonWalls.map(wall => {
+                const shape = wall.shape
+                shape.next = undefined
+                shape.prev = undefined
+                return JSON.stringify(wall.shape)
+            })
+        }
+    }
+    
+    constructor(area: []|undefined = undefined, walls: any[] = []) {
+        
+        walls = walls.map((shape: any) => {
+            shape = JSON.parse(shape)
+            switch (shape.name) {
+                case "segment":
+                    return new Flatten.Edge(new Flatten.Segment(new Flatten.Point(shape.ps.x, shape.ps.y), new Flatten.Point(shape.pe.x, shape.pe.y)))
+                default:
+                    return
+            }
+        })
+        
+        this._dungeonPath = new Flatten.Polygon(area)
+        this._dungeonWalls = walls.flatMap(wall => wall)
+        
+        this.refreshPaths()
     }
     
     // sets the this._areaPath and this._wallsPaths variables based off of this._dungeonWalls and this._dungeonPath

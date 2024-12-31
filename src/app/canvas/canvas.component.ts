@@ -30,7 +30,14 @@ export class CanvasComponent implements AfterViewInit {
   context: CanvasRenderingContext2D|undefined
   
   // private dungeonWalls: Flatten.Edge[] = []
-  private dungeonStructure: PathMaster = new PathMaster() //Flatten.Polygon = new Flatten.Polygon()
+  private savedData: any = JSON.parse(window.localStorage.getItem("board")||"{}")
+  private dungeonStructure: PathMaster = (() => {
+    if (this.savedData.area && this.savedData.walls) {
+      return new PathMaster(this.savedData.area, this.savedData.walls)
+    } else {
+      return new PathMaster()
+    }
+  })()
   
   private offsetX = 0
   private offsetY = 0
@@ -265,18 +272,21 @@ export class CanvasComponent implements AfterViewInit {
   addPathToDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     this.dungeonStructure.addPolygon(newPoly)
+    window.localStorage.setItem("board", JSON.stringify(this.dungeonStructure.json))
     this.draw()
   }
   
   removePathFromDungeon(polygon: Flatten.Polygon) {
     const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     this.dungeonStructure.removePolygon(newPoly)
+    window.localStorage.setItem("board", JSON.stringify(this.dungeonStructure.json))
     this.draw()
   }
   
   addWallToDungeon(startX: number, startY: number, endX: number, endY: number) {
     const line = new Flatten.Segment(new Flatten.Point(startX, startY), new Flatten.Point(endX, endY)).transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
     this.dungeonStructure.addEdge(new Flatten.Edge(line))
+    window.localStorage.setItem("board", JSON.stringify(this.dungeonStructure.json))
     this.draw()
   }
   
