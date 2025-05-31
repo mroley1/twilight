@@ -3,12 +3,19 @@ import Flatten from '@flatten-js/core';
 import { PointerType } from './pointerType';
 import { PathMaster } from './pathMaster';
 import { MarkupType, MarkupTypes } from './markupType';
+import { DungeonGeometry } from './dungeonGeometry';
 
 interface MarkupState {
   points: {x: number, y: number}[],
   rects: {startX: number, startY: number, endX: number, endY: number}[],
   polygons: {x: number, y: number}[][],
   lines: {startX: number, startY: number, endX: number, endY: number}[]
+}
+
+interface VisionPoint {
+  x: number
+  y: number
+  distance: number
 }
 
 @Component({
@@ -39,6 +46,8 @@ export class CanvasComponent implements AfterViewInit {
     }
   })()
   
+  private dungeonGeometry = new DungeonGeometry()
+  
   private offsetX = 0
   private offsetY = 0
   private scale = 0.2
@@ -58,6 +67,9 @@ export class CanvasComponent implements AfterViewInit {
     polygons: [],
     lines: []
   }
+  private visionPoints: VisionPoint[] = [
+    {x: 0, y: 0, distance: 20}
+  ]
   
   @HostListener('window:resize')
   private setContextSize() {
@@ -134,6 +146,7 @@ export class CanvasComponent implements AfterViewInit {
     
     this.drawDots()
     this.drawDungeon()
+    this.drawVision()
     this.drawMarkup()
   }
   
@@ -239,6 +252,25 @@ export class CanvasComponent implements AfterViewInit {
       this.context?.lineTo(this.tcX(line.endX), this.tcY(line.endY))
       this.context?.closePath()
       this.context?.stroke()
+    })
+    this.context.restore()
+  }
+  
+  private drawVision() {
+    if (!this.context) {
+      return
+    }
+    
+    this.dungeonStructure.wallsPaths.forEach((wall) => {
+      // console.log(wall)
+    })
+    
+    this.context.save()
+    this.visionPoints.forEach((point) => {
+      this.context?.beginPath()
+      this.context?.ellipse(this.tcX(point.x), this.tcY(point.y), 20, 20, 0, 0, Math.PI * 2)
+      this.context?.closePath()
+      this.context?.fill()
     })
     this.context.restore()
   }
