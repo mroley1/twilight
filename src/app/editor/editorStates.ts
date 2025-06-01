@@ -2,6 +2,7 @@ import Flatten from "@flatten-js/core";
 import { CanvasComponent } from "../canvas/canvas.component";
 import { PointerType } from "../canvas/pointerType";
 import { MarkupTypes } from "../canvas/markupType";
+import { Dungeon } from "../dungeonGeometry";
 
 export interface EditorState {
     name: string
@@ -70,9 +71,12 @@ export class Rect implements EditorState {
                 break;
             case "pointerup":
                 if (this.drawing && this.finalRect) {
-                    const polygon = new Flatten.Polygon(
-                        new Flatten.Box(this.finalRect.startX, this.finalRect.startY, this.finalRect.endX, this.finalRect.endY)
-                    )
+                    const polygon = new Dungeon.Polygon([
+                        new Dungeon.Point(this.finalRect.startX, this.finalRect.startY),
+                        new Dungeon.Point(this.finalRect.endX, this.finalRect.startY),
+                        new Dungeon.Point(this.finalRect.endX, this.finalRect.endY),
+                        new Dungeon.Point(this.finalRect.startX, this.finalRect.endY)
+                    ])
                     if (this.deleting) {
                         canvasComponent.removePathFromDungeon(polygon)
                     } else {
@@ -104,7 +108,7 @@ export class Polygon implements EditorState {
     pointerType = PointerType.DEFAULT;
     drawing = false;
     deleting = false;
-    points: {x:number,y:number}[] = []
+    points: Dungeon.Point[] = []
     cancelDraw(canvasComponent: CanvasComponent) {
         this.drawing = false;
         this.points = [];
@@ -121,12 +125,8 @@ export class Polygon implements EditorState {
                     if (this.points.length < 3) {
                         break;
                     }
-                    const polygon = new Flatten.Polygon()
-                    let faces: Flatten.Segment[] = this.points.map((current, index, reference) => {
-                        const next = reference[(index + 1) % reference.length]
-                        return new Flatten.Segment(new Flatten.Point(current.x, current.y), new Flatten.Point(next.x, next.y))
-                    })
-                    polygon.addFace(faces)
+                    const polygon = new Dungeon.Polygon(this.points)
+                    console.log(this.points)
                     if (this.deleting) {
                         canvasComponent.removePathFromDungeon(polygon)
                     } else {
@@ -139,7 +139,7 @@ export class Polygon implements EditorState {
                         canvasComponent.setMarkupType(this.deleting ? MarkupTypes.REMOVE : MarkupTypes.ADD);
                         this.drawing = true;
                     }
-                    this.points.unshift({x: boxX, y: boxY});
+                    this.points.unshift(new Dungeon.Point(boxX, boxY));
                 }
                 break;
             case "pointermove":
@@ -148,7 +148,7 @@ export class Polygon implements EditorState {
                 var boxY = canvasComponent.getNearestPointY(pointerEvent.clientY)
                 if (this.drawing) {
                     const copy = Array.from(this.points)
-                    copy.push({x: boxX, y: boxY})
+                    copy.push(new Dungeon.Point(boxX, boxY))
                     canvasComponent.markupPolygon(copy)
                 } else {
                     canvasComponent.markupPoint(boxX, boxY)

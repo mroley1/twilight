@@ -3,7 +3,7 @@ import Flatten from '@flatten-js/core';
 import { PointerType } from './pointerType';
 import { PathMaster } from './pathMaster';
 import { MarkupType, MarkupTypes } from './markupType';
-import { DungeonGeometry } from './dungeonGeometry';
+import { Dungeon } from '../dungeonGeometry';
 
 interface MarkupState {
   points: {x: number, y: number}[],
@@ -46,7 +46,7 @@ export class CanvasComponent implements AfterViewInit {
     }
   })()
   
-  private dungeonGeometry = new DungeonGeometry()
+  private dungeonGeometry = new Dungeon.Geometry()
   
   private offsetX = 0
   private offsetY = 0
@@ -184,7 +184,8 @@ export class CanvasComponent implements AfterViewInit {
     this.context.save()
     this.context.setTransform(this.scale, 0, 0, this.scale, (this.canvasWidth / 2) + (this.offsetX * this.scale), (this.canvasHeight / 2) + (this.offsetY * this.scale))
     this.context.lineWidth = 20
-    const path = this.dungeonStructure.areaPath
+    const path = this.dungeonGeometry.areaPath
+    
     
     const patternElement = document.createElement('canvas')
     patternElement.width = this.TILE_SIZE;
@@ -205,6 +206,7 @@ export class CanvasComponent implements AfterViewInit {
     const pattern = this.context.createPattern(patternElement, null)
     if (pattern) {
       this.context.fillStyle = pattern
+      this.context.transform(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0)
       this.context.fill(path)
     } else {
       console.error("could not create dot pattern")
@@ -301,16 +303,16 @@ export class CanvasComponent implements AfterViewInit {
     return Math.round(canvasCoordinate / this.halfTileSize)
   }
   
-  addPathToDungeon(polygon: Flatten.Polygon) {
-    const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    this.dungeonStructure.addPolygon(newPoly)
+  addPathToDungeon(polygon: Dungeon.Polygon) {
+    // const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
+    this.dungeonGeometry.addPolygons([polygon])
     window.localStorage.setItem("board", JSON.stringify(this.dungeonStructure.json))
     this.draw()
   }
   
-  removePathFromDungeon(polygon: Flatten.Polygon) {
-    const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
-    this.dungeonStructure.removePolygon(newPoly)
+  removePathFromDungeon(polygon: Dungeon.Polygon) {
+    // const newPoly = polygon.transform(new Flatten.Matrix(this.halfTileSize, 0, 0, this.halfTileSize, 0, 0))
+    this.dungeonGeometry.removePolygons([polygon])
     window.localStorage.setItem("board", JSON.stringify(this.dungeonStructure.json))
     this.draw()
   }
